@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   MODERN4LABS — GLOBAL STYLES
+   ========================================================================== */
+
+@theme {
+  /* Brand */
+  --color-brand-blue: #062b4f;
+  --color-brand-green: #24d238;
+  --color-brand-dark: #0a0a0a;
+
+  /* Surfaces — lifted off pure black so the palette reads warm, not void */
+  --color-page: #0c0d10;
+  --color-panel: #101216;
+
+  /* Fonts wired from next/font in layout.tsx */
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif), ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Lenis handles smoothing. Native smooth scroll fights it. */
+  scroll-behavior: auto;
+}
+
+body {
+  background-color: var(--color-page);
+  color: #ffffff;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Horizontal-scroll sections must use overflow-x-clip, never hidden —
+   hidden creates a scroll container and silently breaks position: sticky. */
+
+::selection {
+  background: var(--color-brand-green);
+  color: #000;
+}
+
+/* --------------------------------------------------------------------------
+   Lenis
+   -------------------------------------------------------------------------- */
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Scrollbar
+   -------------------------------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(36, 210, 56, 0.5);
+}
+
+/* --------------------------------------------------------------------------
+   Animations
+   -------------------------------------------------------------------------- */
+
+/* Hero scroll cue — the line that travels down the hairline */
+@keyframes scroll-line {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+
+.scroll-line {
+  animation: scroll-line 2.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* Route transition sweep — CSS-driven on purpose.
+   Base state is opacity 0, so if anything goes wrong it ends invisible
+   instead of stranding the page behind a black screen. */
+@keyframes route-sweep {
+  from { opacity: 0.7; }
+  to   { opacity: 0; }
+}
+
+.route-sweep {
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(36, 210, 56, 0.1) 0%,
+    rgba(10, 10, 10, 0.85) 60%,
+    var(--color-page) 100%
+  );
+  animation: route-sweep 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Sound toggle equaliser bars */
+@keyframes sound-bar {
+  from { height: 25%; }
+  to   { height: 100%; }
+}
+
+/* --------------------------------------------------------------------------
+   Grain overlay (applied in layout.tsx)
+   -------------------------------------------------------------------------- */
+
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* --------------------------------------------------------------------------
+   Accessibility
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .route-sweep {
+    animation: none;
+    opacity: 0;
+  }
+
+  .scroll-line {
+    animation: none;
+  }
+}
