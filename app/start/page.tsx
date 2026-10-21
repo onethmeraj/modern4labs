@@ -198,7 +198,7 @@ export default function StartPage() {
                       Request a quote <ArrowRight size={14} />
                     </GlowButton>
                     {pkg.href && (
-                      <a href={pkg.href} className={`transition-colors hover:text-white ${T.label}`}>
+                      <a href={pkg.href} className={`transition-colors hover:text-white ${T.label}`}>   
                         How it works →
                       </a>
                     )}
@@ -237,7 +237,7 @@ export default function StartPage() {
                 <span className={`text-brand-green ${T.label}`}>{step.num}</span>
                 <h3 className="font-serif text-xl font-light text-white">{step.title}</h3>
                 <p className="font-sans text-[0.8125rem] font-light leading-relaxed text-white/60">{step.desc}</p>
-              </motion.li>
+              </motion.li>  
             ))}
           </motion.ol>
         </div>

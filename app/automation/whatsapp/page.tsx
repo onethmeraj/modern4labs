@@ -4,9 +4,9 @@
    Workflow, features, integrations, use cases. */
 
 import { motion } from "motion/react";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
-  Eyebrow,
   GLOW,
   GlowButton,
   L,
@@ -55,6 +55,10 @@ const USE_CASES = [
   { tag: "Events", title: "Seminar registration", desc: "One campaign handles registration, reminders and the day-before nudge that decides attendance.", accent: "rgba(252,211,77,0.35)" },
 ];
 
+function SectionLabel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <p className={`text-sm font-medium text-white/45 ${className}`}>{children}</p>;
+}
+
 export default function WhatsAppAutomationPage() {
   return (
     <main className={`w-full overflow-x-clip font-sans text-white ${S.page}`}>
@@ -83,7 +87,7 @@ export default function WhatsAppAutomationPage() {
       {/* ---------- The workflow ---------- */}
       <section className={`${L.gutter} pb-8`}>
         <div className={`${L.container}`}>
-          <Eyebrow className="mb-12">The workflow</Eyebrow>
+          <SectionLabel className="mb-12">The workflow</SectionLabel>
 
           <motion.ol
             variants={stagger}
@@ -98,7 +102,6 @@ export default function WhatsAppAutomationPage() {
                   <div
                     className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border p-7 backdrop-blur-xl transition-colors duration-500 sm:p-8 ${S.border} ${S.panel} hover:border-brand-green/30`}
                   >
-                    <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
                     <span
                       aria-hidden
                       className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-0 blur-[60px] transition-opacity duration-700 group-hover:opacity-100"
@@ -133,7 +136,7 @@ export default function WhatsAppAutomationPage() {
       {/* ---------- Features ---------- */}
       <section className={`${L.gutter} pb-24`}>
         <div className={L.container}>
-          <Eyebrow className="mb-12">What's included</Eyebrow>
+          <SectionLabel className="mb-12">What's included</SectionLabel>
 
           <motion.div
             variants={stagger}
@@ -158,7 +161,7 @@ export default function WhatsAppAutomationPage() {
       {/* ---------- Integrations ---------- */}
       <section className={`${L.gutter} pb-24`}>
         <div className={L.container}>
-          <Eyebrow className="mb-12">Integrations</Eyebrow>
+          <SectionLabel className="mb-12">Integrations</SectionLabel>
 
           <motion.div
             variants={stagger}
@@ -185,7 +188,7 @@ export default function WhatsAppAutomationPage() {
       {/* ---------- Use cases ---------- */}
       <section className={`${L.gutter} pb-24 sm:pb-32`}>
         <div className={L.container}>
-          <Eyebrow className="mb-12">Where it works</Eyebrow>
+          <SectionLabel className="mb-12">Where it works</SectionLabel>
 
           <motion.div
             variants={stagger}
@@ -201,7 +204,6 @@ export default function WhatsAppAutomationPage() {
                     className={`relative h-full overflow-hidden rounded-2xl border p-8 backdrop-blur-xl sm:p-10 ${S.border} ${S.panel}`}
                     style={{ boxShadow: `0 2px 6px rgba(0,0,0,0.5), 0 40px 90px -60px ${c.accent}` }}
                   >
-                    <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
                     <span className={`mb-5 block ${T.label}`}>{c.tag}</span>
                     <h3 className={`mb-4 text-white ${T.h3}`}>{c.title}</h3>
                     <p className={T.body}>{c.desc}</p>

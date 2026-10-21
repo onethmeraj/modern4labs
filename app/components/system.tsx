@@ -27,7 +27,7 @@ export const T = {
   h3: "font-serif font-light leading-tight tracking-tight text-[clamp(1.375rem,2.2vw,2rem)]",
   body: "font-sans font-light leading-relaxed text-[clamp(0.9375rem,1vw,1.0625rem)] text-white/65",
   small: "font-sans font-light leading-relaxed text-[0.8125rem] sm:text-sm text-white/65",
-  label: "font-mono uppercase text-[9px] sm:text-[10px] tracking-[0.3em] text-white/45",
+  label: "font-mono text-[10px] sm:text-[11px] tracking-[0.04em] text-white/45",
   button: "font-mono uppercase text-[10px] sm:text-[11px] tracking-[0.2em]",
 };
 
@@ -78,24 +78,23 @@ export const isFinePointer = () =>
   typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
 /* ---------- Nav + Footer (shared across every route) ---------- */
-
 const NAV_LINKS = [
+  { href: "/about", label: "About" },
   { href: "/automation/whatsapp", label: "WhatsApp Automation" },
   { href: "/start", label: "Packages" },
   { href: "/contact", label: "Contact" },
 ];
-
 export function SiteNav() {
   return (
     <nav className={`fixed top-0 z-50 flex w-full items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent py-3 sm:py-4 ${L.gutter}`}>
       <Link href="/" className="relative h-6 w-28 shrink-0 sm:h-8 sm:w-36">
-        <Image 
-          src="/logo-text.png" 
-          alt="Modern4labs" 
-          fill 
-          priority 
-          sizes="150px" /* <--- ADD THIS LINE HERE */
-          className="object-contain object-left" 
+        <Image
+          src="/logo-text.png"
+          alt="Modern4labs"
+          fill
+          priority
+          sizes="150px"
+          className="object-contain object-left"
         />
       </Link>
 
@@ -346,8 +345,7 @@ export function ScrollGlowStatement({
 
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <p className={`flex items-center gap-4 ${T.label} ${className}`}>
-      <span className={`h-px w-10 bg-brand-green ${GLOW.soft}`} />
+    <p className={`font-mono text-[11px] tracking-[0.04em] text-white/45 ${className}`}>
       {children}
     </p>
   );

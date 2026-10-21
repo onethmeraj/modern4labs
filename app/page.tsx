@@ -3,32 +3,22 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MouseEvent,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import Image from "next/image";
+import Link from "next/link";
+import { AnimatePresence, MotionConfig, motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { useLenis } from "lenis/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import DottedMap from "dotted-map";
 
 /* Unified Design System Imports */
-import {
-  ArrowRight,
-  EASE,
-  GlowButton,
-  L,
-  S,
-  SiteFooter,
-  SiteNav,
-  T,
-  TiltCard,
-  fadeUp,
-  stagger,
-} from "./components/system";
+import { ArrowRight, EASE, GlowButton, L, S, SiteFooter, SiteNav, T, stagger } from "./components/system";
 import WelcomeScreen from "./components/WelcomeScreen";
 import SoundToggle from "./components/SoundToggle";
 import ScrambleText from "./components/ScrambleText";
@@ -38,124 +28,203 @@ if (typeof window !== "undefined") {
 }
 
 /* ========================================================================== */
-/* 1. CONTENT                                                                 */
+/* 0. TYPE + UI SYSTEM — one place for sizes so every section matches          */
 /* ========================================================================== */
+
+const TYPE = {
+  /* hero headline — uses the studio display font */
+  display: T.display,
+  /* big statements and section headlines — studio heading font */
+  statement: T.h2,
+  h2: T.h2,
+  /* card / row title */
+  h3: "font-sans font-bold leading-tight tracking-[-0.03em] text-[clamp(1.375rem,2.4vw,2rem)]",
+  /* supporting text */
+  body: "font-sans text-base leading-relaxed sm:text-lg",
+  small: "font-sans text-sm leading-relaxed",
+  /* small label above a headline — studio label font */
+  label: `text-brand-green ${T.label}`,
+};
+
+const BTN = {
+  base: "inline-flex items-center justify-center gap-2 rounded-md px-6 py-3.5 font-sans text-sm font-bold transition-transform duration-300 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green",
+  green: "bg-brand-green text-black",
+  white: "bg-white text-black",
+  dark: "bg-[#0c0d10] text-white",
+};
+
+const AUDIT_HREF = "/contact?service=audit";
 
 const HERO_KICKER = "Modern4Labs — Digital Studio";
 const ROTATING_WORDS = ["Leads.", "Growth.", "Vision.", "Scale."] as const;
 
-const IMG = {
-  ui: "https://images.unsplash.com/photo-1618761714954-0b8cd0026356?q=80&w=1200&auto=format&fit=crop",
-  code: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1200&auto=format&fit=crop",
-  strategy: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=1200&auto=format&fit=crop",
-  dashboard: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200&auto=format&fit=crop",
-  identity: "https://images.unsplash.com/photo-1561070791-2526d30994b5?q=80&w=1200&auto=format&fit=crop",
-  abstract: "https://images.unsplash.com/photo-1600132806370-bf17e65e942f?q=80&w=1200&auto=format&fit=crop",
+/* ========================================================================== */
+/* 1. CONTENT — edit words here                                                */
+/* ========================================================================== */
+
+const PROBLEMS = [
+  { title: "Posting isn't marketing.", desc: "A full feed doesn't mean anyone is paying attention." },
+  { title: "Ordinary gets scrolled past.", desc: "Content that looks like everyone else's is invisible." },
+  { title: "Attention needs a next step.", desc: "Views mean nothing if nobody messages, books or buys." },
+];
+
+/* ---- Map locations: to add a city, add one entry here (lat/lng + time zone) ---- */
+type Hub = {
+  id: string;
+  city: string;
+  country: string;
+  lat: number;
+  lng: number;
+  tz: string;
+  role: string;
+  clients: string[];
+  hq?: boolean;
 };
 
-const TRAIL_IMAGES = [IMG.ui, IMG.code, IMG.strategy, IMG.dashboard, IMG.identity, IMG.abstract];
-const CLIENTS = ["NVIDIA", "STEALTH STARTUP", "Y COMBINATOR", "SEQUOIA", "OPENAI", "META", "TECHSTARS"];
-
-const HERO_CARDS = [
-  { num: "01", tag: "Authority", title: "Aesthetic Precision", desc: "Establishes trust and positions you as the premium choice in a crowded market." },
-  { num: "02", tag: "Retention", title: "Fluid Interaction", desc: "Cinematic motion reduces bounce rates and guides users toward the conversion event." },
-  { num: "03", tag: "Revenue", title: "Data Architecture", desc: "Design backed by data. We turn passive scrollers into committed clients." },
-  { num: "04", tag: "Velocity", title: "Engineered Speed", desc: "Sub-second loads and 60fps motion, because performance is part of the brand." },
-  { num: "05", tag: "Clarity", title: "Systemised Design", desc: "One design system across every surface, so nothing ever feels improvised." },
+const HUBS: Hub[] = [
+  { id: "colombo", city: "Colombo", country: "Sri Lanka", lat: 6.9271, lng: 79.8612, tz: "Asia/Colombo", role: "Studio HQ", clients: ["Seafarer Store", "The Search Bar"], hq: true },
+  { id: "stockholm", city: "Stockholm", country: "Sweden", lat: 59.3293, lng: 18.0686, tz: "Europe/Stockholm", role: "Nordic expansion", clients: ["The Search Bar"] },
+  { id: "melbourne", city: "Melbourne", country: "Australia", lat: -37.8136, lng: 144.9631, tz: "Australia/Melbourne", role: "High-ticket funnels", clients: ["Sunblock Property"] },
 ];
 
-const HERO_CARD_POSITIONS = [
-  "left-[3%] top-[9%] -rotate-6 xl:left-[6%]",
-  "right-[3%] top-[11%] rotate-6 xl:right-[6%]",
-  "left-[4%] bottom-[10%] -rotate-3 xl:left-[8%]",
-  "right-[4%] bottom-[8%] rotate-3 xl:right-[8%]",
-  "left-[40%] top-[4%] -rotate-2",
+/* ---- Client logos: one entry per client. Put logo files in /public/clients ---- */
+const CLIENTS = [
+  { name: "The Search Bar", logo: "/clients/logo-2.png" },
+  { name: "Sunblock Property", logo: "/clients/logo-3.png" },
+  { name: "Seafarer Store", logo: "/clients/logo-4.png" },
+  { name: "Foldfox", logo: "/clients/logo-1.png" },
 ];
 
-const HERO_CARD_PARALLAX = [
-  { x: -40, y: -50, rx: 12, ry: 14 },
-  { x: 50, y: 40, rx: -12, ry: -18 },
-  { x: -30, y: 60, rx: 10, ry: 10 },
-  { x: 42, y: -34, rx: -10, ry: -12 },
-  { x: -18, y: 46, rx: 8, ry: 16 },
+const PROJECT_IMAGES = [
+  "/works/project-0.png",
+  "/works/project-1.jpeg",
+  "/works/project-2.png",
+  "/works/project-3.jpeg",
+  "/works/project-4.png",
+  "/works/project-5.jpeg",
+  "/works/project-6.jpeg",
 ];
 
-const LINK_ORDER = [0, 4, 1, 3, 2];
+/* ---- Services. Only list a client under "proof" if you did that work for them ---- */
+type ServicePreview = "video" | "ads" | "page" | "chat";
 
-const TRUST_CARDS = [
+const SERVICES: {
+  id: string;
+  num: string;
+  title: string;
+  promise: string;
+  tags: string[];
+  monthly: string;
+  proof?: string;
+  preview: ServicePreview;
+}[] = [
   {
-    num: "01",
-    service: "Strategy & Positioning",
-    value: "Clarity before pixels.",
-    desc: "Most agencies open a design file first. We open a document. Positioning, audience and the one idea your brand owns come before a single visual decision.",
-    fact: "Every engagement opens with a two-week diagnostic — never a template.",
-    accent: { text: "text-emerald-300", rule: "bg-emerald-300", panel: "from-emerald-400/20 via-emerald-500/5", glow: "rgba(52,211,153,0.25)" },
+    id: "short-form-video",
+    num: "001",
+    title: "Short-form video",
+    promise: "Reels and ads that stop the scroll and say something.",
+    tags: ["Content ideas", "Scriptwriting", "Editing", "Hooks & captions"],
+    monthly: "A planned calendar of scripted, edited reels, ready to post.",
+    proof: "Seafarer Store",
+    preview: "video",
   },
   {
-    num: "02",
-    service: "Identity Systems",
-    value: "Designed once, applied everywhere.",
-    desc: "Not a logo. A system — type scale, colour, motion rules, component library — so every future asset looks like it came from the same studio.",
-    fact: "40+ documented components handed over with every identity build.",
-    accent: { text: "text-cyan-300", rule: "bg-cyan-300", panel: "from-cyan-400/20 via-cyan-500/5", glow: "rgba(103,232,249,0.25)" },
+    id: "paid-ads",
+    num: "002",
+    title: "Paid ads",
+    promise: "Meta campaigns set up, tested and managed, so your budget goes to what works.",
+    tags: ["Campaign setup", "Creative testing", "Retargeting", "Monthly reporting"],
+    monthly: "Campaigns checked and adjusted every week, with a clear report every month.",
+    proof: "Sunblock Property",
+    preview: "ads",
   },
   {
-    num: "03",
-    service: "Web Engineering",
-    value: "Performance is part of the brand.",
-    desc: "Cinematic doesn't mean slow. Everything we ship is built on the edge, tested on mid-range hardware, and held to a frame budget — not just a design review.",
-    fact: "We don't ship above a one-second largest contentful paint.",
-    accent: { text: "text-violet-300", rule: "bg-violet-300", panel: "from-violet-400/20 via-violet-500/5", glow: "rgba(196,181,253,0.25)" },
+    id: "landing-pages",
+    num: "003",
+    title: "Landing pages",
+    promise: "Fast, focused pages that turn clicks into bookings.",
+    tags: ["Page design", "Build", "Copywriting", "Lead forms"],
+    monthly: "One page with one job, built and tested before it goes live.",
+    proof: "The Search Bar",
+    preview: "page",
   },
   {
-    num: "04",
-    service: "Content Engines",
-    value: "Volume without the drop in quality.",
-    desc: "A brand needs feeding. We build repeatable production systems so output stays constant long after the launch buzz has faded.",
-    fact: "Twelve finished assets from a single production day.",
-    accent: { text: "text-amber-300", rule: "bg-amber-300", panel: "from-amber-400/20 via-amber-500/5", glow: "rgba(252,211,77,0.25)" },
-  },
-  {
-    num: "05",
-    service: "Growth & Analytics",
-    value: "Reporting you actually read.",
-    desc: "No 40-slide dashboards nobody opens. One page, the numbers that move the business, and a clear recommendation attached to each one.",
-    fact: "A 60-second monthly report, with next actions already decided.",
-    accent: { text: "text-rose-300", rule: "bg-rose-300", panel: "from-rose-400/20 via-rose-500/5", glow: "rgba(253,164,175,0.25)" },
+    id: "automation-crm",
+    num: "004",
+    title: "Automation & CRM",
+    promise: "WhatsApp and email follow-ups, so no lead goes cold.",
+    tags: ["GoHighLevel", "WhatsApp flows", "Email follow-ups", "Lead pipelines"],
+    monthly: "Every new lead gets a reply in minutes, even when you are busy.",
+    preview: "chat",
   },
 ];
 
-const GREATS = [
-  { num: "01", name: "Jobs", trait: "Invention", lesson: "Taste is a discipline. Refuse to ship anything that feels ordinary.", img: "/greats/jobs.jpg" },
-  { num: "02", name: "Ronaldo", trait: "Relentlessness", lesson: "Talent is the entry fee. The work after the work is where the gap opens.", img: "/greats/ronaldo.jpg" },
-  { num: "03", name: "West", trait: "Conviction", lesson: "Every category-defining idea looked unreasonable before it looked obvious.", img: "/greats/west.jpg" },
-  { num: "04", name: "Jordan", trait: "Hustle", lesson: "No shortcut replaces reps. Volume makes the outcome look inevitable.", img: "/greats/jordan.jpg" },
-  { num: "05", name: "Bryant", trait: "Obsession", lesson: "Details compound. A brand is a thousand small things, all of them noticed.", img: "/greats/bryant.jpg" },
-] as const;
-
-const SHOWCASE_3D = [
-  { num: "01", title: "Identity", desc: "Every build begins with the core essence of the brand and its market positioning.", img: IMG.ui },
-  { num: "02", title: "Insight", desc: "Data, experience and performance brought together through a detail-led approach.", img: IMG.code },
-  { num: "03", title: "Cohesion", desc: "Every interaction chosen with precision, so UI and frontend feel distinctive.", img: IMG.strategy },
-  { num: "04", title: "Conversion", desc: "Pipelines architected to turn attention into measurable revenue.", img: IMG.dashboard },
-  { num: "05", title: "Scale", desc: "Future-proof infrastructure designed to grow with your business.", img: IMG.identity },
+const STEPS = [
+  { num: "01", title: "Free audit call", desc: "20 minutes on your page, your ads and where leads are slipping away." },
+  { num: "02", title: "Clear plan", desc: "What we will make, run and measure, with a fixed quote." },
+  { num: "03", title: "Create and launch", desc: "Content, ads and pages go live. You approve everything first." },
+  { num: "04", title: "Report and scale", desc: "Monthly numbers, honest notes and more of what works." },
 ];
 
-const SERVICES = [
-  { title: "Web Platforms", desc: "From headless architecture to frontend refinement, platforms designed to change your presence without compromising character.", img: IMG.dashboard },
-  { title: "Digital Systems", desc: "Typography, grids and material chosen to create an interface that feels personal, tactile and considered.", img: IMG.identity },
-  { title: "Growth Funnels", desc: "Marketing systems built to enhance stance and market presence, selected to complement the brand's performance.", img: IMG.abstract },
+/* ---- Comparison: answers "why not do it myself or hire anyone?" ---- */
+const COMPARE = [
+  { row: "Ideas", diy: "Whatever you have time for", typical: "Trends and templates, copied", us: "Original ideas built around your brand" },
+  { row: "Content", diy: "Phone videos when you can", typical: "Posts made to fill a calendar", us: "Every post made to get a message, booking or sale" },
+  { row: "Strategy", diy: "Guesswork", typical: "Rarely part of the deal", us: "A clear plan before anything is made" },
+  { row: "Ads, pages, follow-up", diy: "Separate tools, separate headaches", typical: "A different company for each", us: "One team for video, ads, pages and automation" },
+  { row: "Price", diy: "Your time, which is never free", typical: "Extras you find out about later", us: "Fixed packages, price known upfront" },
+  { row: "Reporting", diy: "Hard to tell what's working", typical: "Likes and reach", us: "Monthly numbers tied to enquiries" },
+];
+
+/* ---- Statistics: every number has a public source. Do not add numbers without one ---- */
+const STATS = [
+  {
+    value: 9,
+    decimals: 0,
+    prefix: "",
+    suffix: "M",
+    label: "social media users in Sri Lanka",
+    point: "Your customers are already scrolling.",
+    source: "DataReportal, Digital 2026 (Oct 2025)",
+  },
+  {
+    value: 21.6,
+    decimals: 1,
+    prefix: "+",
+    suffix: "%",
+    label: "growth in Instagram's ad reach in Sri Lanka in one year",
+    point: "The audience is growing. Standing out matters more every month.",
+    source: "Meta ad tools via DataReportal (Oct 2024 to Oct 2025)",
+  },
+  {
+    value: 47,
+    decimals: 0,
+    prefix: "",
+    suffix: "%",
+    label: "of the sales lift from advertising comes from the creative itself",
+    point: "Budget gets you seen. Creative gets you chosen.",
+    source: "Nielsen & NCSolutions",
+  },
+];
+
+/* ---- Your own results. Leave empty until you have real, checkable numbers.
+   Format: { value: "…", label: "…", client: "…" }. The block only shows when this has items. ---- */
+const RESULTS: { value: string; label: string; client: string }[] = [];
+
+const PILLARS = [
+  { word: "Visibility", line: "Get seen by the right people." },
+  { word: "Virality", line: "Give people a reason to share." },
+  { word: "Credibility", line: "Look like the obvious choice." },
 ];
 
 /* ========================================================================== */
-/* 2. LOCAL MOTION CONFIG + HELPERS                                           */
+/* 2. MOTION HELPERS                                                           */
 /* ========================================================================== */
 
-const PRIORITY = { hero: 5, pipeline: 4, carousel: 3, services: 2 };
+const PRIORITY = { hero: 3 };
 
 const NOISE_URL = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`;
 
-/* Lines rise out of a mask instead of fading in — reads as film titling. */
 const lineMask = {
   hidden: { y: "110%" },
   show: { y: "0%", transition: { duration: 1.4, ease: EASE } },
@@ -164,53 +233,34 @@ const lineMask = {
 const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const isFinePointer = () => typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-function offsetFromCenter(el: HTMLElement, trackX: number) {
-  const elCenter = el.offsetLeft + el.offsetWidth / 2 + trackX;
-  return (elCenter - window.innerWidth / 2) / (window.innerWidth / 2);
-}
-
-function buildConstellationPath(points: { x: number; y: number }[]) {
-  if (points.length < 2) return "";
-  const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2,
-  });
-
-  const first = mid(points[points.length - 1], points[0]);
-  let d = `M ${first.x.toFixed(1)} ${first.y.toFixed(1)}`;
-
-  for (let i = 0; i < points.length; i++) {
-    const current = points[i];
-    const next = points[(i + 1) % points.length];
-    const m = mid(current, next);
-    d += ` Q ${current.x.toFixed(1)} ${current.y.toFixed(1)} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`;
-  }
-  return `${d} Z`;
-}
-
 /* ========================================================================== */
-/* 3. PAGE ASSEMBLY                                                           */
+/* 3. PAGE ASSEMBLY                                                            */
 /* ========================================================================== */
 
 export default function Home() {
-  /* FIX 2: two booleans, not one.
-     entered — the user dismissed the welcome screen
-     ready   — the welcome screen has fully LEFT the DOM and the document
-               has its final height. Only `ready` gates measurement + Hero. */
   const [entered, setEntered] = useState(false);
   const [ready, setReady] = useState(false);
+  const [checked, setChecked] = useState(false); // have we read sessionStorage yet?
   const lenis = useLenis();
 
-  /* Scroll lock while the welcome screen is up. lenis.stop(), never body.overflow. */
+  // Decide once, on mount, whether the welcome should play this session.
+  useEffect(() => {
+    if (sessionStorage.getItem("introSeen")) {
+      setEntered(true); // already seen this session — skip straight to the page
+      setReady(true); // skip path must also release the hero animation
+    }
+    setChecked(true);
+  }, []);
+
   useEffect(() => {
     if (!lenis) return;
     if (entered) lenis.start();
     else lenis.stop();
   }, [lenis, entered]);
 
-  /* Fires from AnimatePresence's onExitComplete — the welcome screen is gone
-     before anything measures the page. */
   const handleExitComplete = useCallback(() => {
+    sessionStorage.setItem("introSeen", "true"); // remember for the rest of the session
+
     if (!lenis) {
       setReady(true);
       return;
@@ -219,162 +269,203 @@ export default function Home() {
     lenis.start();
     lenis.scrollTo(0, { immediate: true });
 
-    /* Two frames: one for React's commit, one for the browser's layout pass.
-       A single rAF still measures the pre-unmount height. */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         lenis.resize();
-        ScrollTrigger.refresh(true); /* hard refresh — recalculates pin spacers */
-        setReady(true);              /* only now do the Hero variants start */
+        ScrollTrigger.refresh(true);
+        setReady(true);
       });
     });
 
-    /* Serif metrics land late and shift every pinned start. Refresh again. */
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
   }, [lenis]);
-
-  useGSAP(() => {
-    if (prefersReducedMotion()) return;
-    const proxy = { skew: 0 };
-    const setSkew = gsap.quickSetter(".velocity-skew", "skewY", "deg");
-    const clamp = gsap.utils.clamp(-5, 5);
-
-    const st = ScrollTrigger.create({
-      onUpdate: (self) => {
-        const skew = clamp(self.getVelocity() / -200);
-        if (Math.abs(skew) > Math.abs(proxy.skew)) {
-          proxy.skew = skew;
-          gsap.to(proxy, { skew: 0, duration: 0.9, ease: "power3", overwrite: true, onUpdate: () => setSkew(proxy.skew) });
-        }
-      },
-    });
-    return () => st.kill();
-  }, []);
 
   return (
     <MotionConfig reducedMotion="user">
       <AnimatePresence onExitComplete={handleExitComplete}>
-        {!entered && <WelcomeScreen key="welcome" onEnter={() => setEntered(true)} />}
+        {checked && !entered && <WelcomeScreen key="welcome" onEnter={() => setEntered(true)} />}
       </AnimatePresence>
 
       <main className={`w-full overflow-x-clip font-sans text-white selection:bg-brand-green selection:text-black ${S.page}`}>
         <SiteNav />
+
+        {/* 1. Hero */}
         <Hero start={ready} />
-        <TrustStack />
-        <StandardQueue />
-        <WorkHoverTrail />
-        <ApproachMarquee />
-        <Showcase3DCarousel />
-        <PhilosophyReveal />
-        <ServicesSplit />
-        <SiteFooter />
+
+        {/* 2. The problem + presence */}
+        <div className="relative z-20 -mt-[2px] w-full overflow-hidden bg-[#0c0d10]">
+          <ConstellationCanvas />
+          <Problem />
+          <div className="relative z-10 w-full border-t border-white/[0.06]">
+            <GlobalPresenceMap />
+            <ClientLogos />
+          </div>
+        </div>
+
+        {/* 3. Work */}
+        <div className="relative z-20 w-full border-t border-white/[0.04] bg-[#0c0d10]">
+          <Work />
+        </div>
+
+        {/* 4. Services */}
+        <div className="relative z-10 w-full bg-[#0c0d10]">
+          <Services />
+        </div>
+
+        {/* 5. Why us vs doing it yourself */}
+        <div className="relative z-10 w-full bg-[#0c0d10]">
+          <Compare />
+        </div>
+
+        {/* 6. Why creativity matters (numbers) */}
+        <div className="relative z-10 w-full bg-[#0c0d10]">
+          <TheNumbers />
+        </div>
+
+        {/* 7. How it works */}
+        <div className="relative z-20 w-full bg-[#101216]">
+          <HowItWorks />
+        </div>
+
+        {/* 8. Final CTA */}
+        <div className="relative z-20 w-full bg-[#0c0d10]">
+          <FinalCta />
+          <SiteFooter />
+        </div>
       </main>
     </MotionConfig>
   );
 }
 
 /* ========================================================================== */
-/* 4. SECTIONS                                                                */
+/* 4. SECTIONS                                                                 */
 /* ========================================================================== */
 
-/* ---------- Hero: graded film + constellation cards ---------- */
+/* ---------- Background particles ---------- */
+function ConstellationCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let particles: { x: number; y: number; vx: number; vy: number; radius: number }[] = [];
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      initParticles();
+    };
+
+    const initParticles = () => {
+      const count = window.innerWidth < 768 ? 50 : 100;
+      particles = [];
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35,
+          radius: Math.random() * 1.4 + 0.4,
+        });
+      }
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(36, 210, 56, 0.4)";
+      ctx.lineWidth = 0.75;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 140) {
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(36, 210, 56, ${0.16 - (dist / 140) * 0.16})`;
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    window.addEventListener("resize", resize);
+    resize();
+    draw();
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-60 mix-blend-screen"
+    />
+  );
+}
+
+
+/* ---------- Hero ---------- */
 function Hero({ start }: { start: boolean }) {
   const containerRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const pathRef = useRef<SVGPathElement>(null);
-  const nodesRef = useRef<(SVGCircleElement | null)[]>([]);
 
   const handleMouseMove = useCallback((e: MouseEvent<HTMLElement>) => {
     if (!isFinePointer() || prefersReducedMotion()) return;
     const x = (e.clientX / window.innerWidth - 0.5) * 2;
     const y = (e.clientY / window.innerHeight - 0.5) * 2;
-
-    HERO_CARD_PARALLAX.forEach((p, i) => {
-      const el = cardRefs.current[i];
-      if (!el) return;
-      gsap.to(el, { x: x * p.x, y: y * p.y, rotateX: y * p.rx, rotateY: x * p.ry, duration: 1.6, ease: "power3.out" });
-    });
-
-    gsap.to(".hero-video", { x: x * -18, y: y * -14, duration: 2, ease: "power3.out" });
+    gsap.to(".hero-video", { x: x * -14, y: y * -10, duration: 1.8, ease: "power3.out" });
   }, []);
 
-  /* FIX 3a: early return on !start + revertOnUpdate, so the false->true flip
-     doesn't leave an orphaned ticker callback running. */
-  useGSAP(() => {
-      if (!start) return;
-      if (prefersReducedMotion()) return;
-      const section = containerRef.current;
-      const path = pathRef.current;
-      if (!section || !path) return;
+  useGSAP(
+    () => {
+      if (!start || prefersReducedMotion()) return;
 
-      const draw = () => {
-        const base = section.getBoundingClientRect();
-        const points = LINK_ORDER.map((idx) => {
-          const el = cardRefs.current[idx];
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { x: r.left - base.left + r.width / 2, y: r.top - base.top + r.height / 2 };
-        }).filter(Boolean) as { x: number; y: number }[];
-
-        if (points.length < 2) return;
-        path.setAttribute("d", buildConstellationPath(points));
-
-        points.forEach((p, i) => {
-          const node = nodesRef.current[i];
-          if (!node) return;
-          node.setAttribute("cx", p.x.toFixed(1));
-          node.setAttribute("cy", p.y.toFixed(1));
-        });
-      };
-
-      gsap.ticker.add(draw);
-      return () => gsap.ticker.remove(draw);
-    },
-    { scope: containerRef, dependencies: [start], revertOnUpdate: true }
-  );
-
-  /* FIX 3b: revertOnUpdate kills the first timeline before building the
-     second. Without it, two timelines fight over autoAlpha on .fg-word and
-     the headline stays at 0 — the "entrance animation failure". */
-  useGSAP(() => {
-      if (!start) return;
-      const mm = gsap.matchMedia();
-
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.to(".constellation-path", { strokeDashoffset: -240, duration: 6, ease: "none", repeat: -1 });
-
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top top",
-            end: () => `+=${window.innerHeight * (window.innerWidth < 768 ? 2.5 : 3.5)}`,
-            scrub: 1.5,
-            pin: true,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-            refreshPriority: PRIORITY.hero,
-          },
-        });
-
-        tl
-          .fromTo(".hero-video", { scale: 1.04 }, { scale: 1.35, ease: "none", duration: 4 }, 0)
-          .fromTo(".hero-grade", { opacity: 1 }, { opacity: 0.5, ease: "none", duration: 4 }, 0)
-          .fromTo(".fg-word", { scale: 1, autoAlpha: 1, filter: "blur(0px)" }, { scale: 2.4, autoAlpha: 0, filter: "blur(14px)", duration: 2, ease: "power2.in", stagger: 0.22 }, 0.2)
-          .fromTo(".fg-ui", { autoAlpha: 1, filter: "blur(0px)" }, { autoAlpha: 0, filter: "blur(10px)", duration: 0.8 }, 0.2)
-          .fromTo("#lab-compass", { autoAlpha: 0, scale: 0.8, rotate: -20 }, { autoAlpha: 0.18, scale: 1, rotate: 0, duration: 2.5, ease: "power2.out" }, 0.8)
-          .fromTo(".bg-word", { scale: 0.92, autoAlpha: 0, filter: "blur(10px)" }, { scale: 1, autoAlpha: 1, filter: "blur(0px)", duration: 2, ease: "power2.out", stagger: 0.06 }, 0.8)
-          .fromTo(".bg-ui", { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 1.5, ease: "power2.out" }, 1.2)
-          .fromTo(".tangled-card", { autoAlpha: 0, scale: 0.6, yPercent: 18 }, { autoAlpha: 1, scale: 1, yPercent: 0, stagger: 0.14, duration: 2, ease: "power3.out" }, 1.4)
-          .fromTo(".constellation", { autoAlpha: 0 }, { autoAlpha: 1, duration: 1.4, ease: "power2.out" }, 2.1);
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top top",
+          end: () => `+=${window.innerHeight * 0.55}`,
+          scrub: 0.8,
+          pin: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          refreshPriority: PRIORITY.hero,
+        },
       });
 
-      mm.add("(prefers-reduced-motion: reduce)", () => {
-        gsap.set(".bg-layer", { display: "none" });
-      });
-
-      return () => mm.revert(); /* matchMedia needs explicit cleanup */
+      tl.fromTo(".hero-video", { scale: 1.04 }, { scale: 1.35, ease: "none", duration: 1 }, 0)
+        .fromTo(".hero-video-wrapper", { opacity: 1 }, { opacity: 0, ease: "power2.inOut", duration: 1 }, 0)
+        .fromTo(
+          ".fg-content",
+          { autoAlpha: 1, y: 0, filter: "blur(0px)" },
+          { autoAlpha: 0, y: -40, filter: "blur(14px)", duration: 0.8, ease: "power2.in" },
+          0
+        );
     },
     { scope: containerRef, dependencies: [start], revertOnUpdate: true }
   );
@@ -383,661 +474,501 @@ function Hero({ start }: { start: boolean }) {
     <section
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className={`relative flex w-full items-center justify-center overflow-hidden bg-black [perspective:1200px] ${L.screen}`}
+      className={`relative flex w-full items-center justify-center overflow-hidden bg-[#0c0d10] ${L.screen}`}
     >
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+      <div className="hero-video-wrapper pointer-events-none absolute inset-0 z-0 overflow-hidden">
         <video
           ref={videoRef}
           autoPlay
           loop
           muted
           playsInline
-          className="hero-video h-[108%] w-[108%] -translate-x-[4%] -translate-y-[4%] object-cover [filter:brightness(0.62)_saturate(1)_contrast(1.05)] will-change-transform"
+          className="hero-video h-[108%] w-[108%] -translate-x-[4%] -translate-y-[4%] object-cover [filter:brightness(0.5)_saturate(1)_contrast(1.05)] will-change-transform"
         >
           <source src="/modern4labsintro.mp4" type="video/mp4" />
         </video>
-
-        <div className="hero-grade absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/20 to-black/90" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,rgba(0,0,0,0.55)_0%,rgba(0,0,0,0.2)_45%,transparent_75%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.7)_100%)]" />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/85 via-black/30 to-[#0c0d10]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.7)_100%)]" />
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-[1] opacity-[0.15] mix-blend-overlay" style={{ backgroundImage: NOISE_URL }} />
+      <div className="pointer-events-none absolute inset-0 z-[1] opacity-[0.12] mix-blend-overlay" style={{ backgroundImage: NOISE_URL }} />
 
       <div className={`relative z-10 flex h-full w-full items-center justify-center ${L.gutter}`}>
         <motion.div
           variants={stagger}
           initial="hidden"
           animate={start ? "show" : "hidden"}
-          className="pointer-events-none absolute inset-0 flex w-full flex-col items-center justify-center text-center"
+          className="fg-content flex w-full flex-col items-center text-center will-change-[transform,opacity,filter]"
         >
-          <FgBlock className="mb-6 flex items-center justify-center gap-4 sm:mb-8">
+          <div className="mb-6 flex items-center justify-center gap-4 sm:mb-8">
             <span className="h-px w-8 bg-white/30 sm:w-14" />
             <span className={`whitespace-nowrap text-white/70 ${T.label}`}>{HERO_KICKER}</span>
             <span className="h-px w-8 bg-white/30 sm:w-14" />
-          </FgBlock>
+          </div>
 
           <h1 className={`relative z-10 mx-auto w-full max-w-[min(92vw,1100px)] text-center ${T.display}`}>
-            <span className="fg-word block overflow-hidden pb-[0.12em]">
+            <span className="block overflow-hidden pb-[0.12em]">
               <motion.span variants={lineMask} className="block text-white [text-shadow:0_2px_40px_rgba(0,0,0,0.9)]">
                 Engineering Digital
               </motion.span>
             </span>
 
-            <span className="fg-word mt-1 block overflow-hidden pb-[0.14em] md:mt-2">
+            <span className="mt-1 block overflow-hidden pb-[0.14em] md:mt-2">
               <motion.span variants={lineMask} className="block">
-                <span className="inline-block bg-gradient-to-br from-white via-brand-green to-brand-green/70 bg-clip-text italic text-transparent [filter:drop-shadow(0_0_28px_rgba(36,210,56,0.35))]">
+                <span className="inline-block bg-gradient-to-br from-white via-brand-green to-brand-green/70 bg-clip-text text-transparent [filter:drop-shadow(0_0_28px_rgba(36,210,56,0.35))]">
                   {start ? <ScrambleText words={ROTATING_WORDS} hold={2200} speed={34} align="center" /> : <span>{ROTATING_WORDS[0]}</span>}
                 </span>
               </motion.span>
             </span>
           </h1>
 
-          <FgBlock className="mt-8 flex flex-col items-center gap-6 sm:mt-10">
+          <div className="mt-8 flex flex-col items-center gap-6 sm:mt-10">
             <span className="h-10 w-px bg-gradient-to-b from-white/45 to-transparent" />
-            <p className="max-w-md font-sans text-sm font-light leading-relaxed text-white/65 sm:text-base">
+            <p className="max-w-md font-sans text-sm font-normal leading-relaxed text-white/65 sm:text-base">
               A digital studio engineering brands that refuse to be ignored.
             </p>
-          </FgBlock>
-        </motion.div>
 
-        <div className="bg-layer pointer-events-none absolute inset-0 flex w-full flex-col items-center justify-center text-center">
-          <div id="lab-compass" className="invisible pointer-events-none absolute inset-0 flex items-center justify-center will-change-transform">
-            <LabCompass />
-          </div>
-
-          <div className={`relative z-20 flex h-full w-full flex-col items-center justify-center ${L.gutter}`}>
-            <div className="mb-10 flex max-w-3xl flex-wrap justify-center gap-x-[0.25em] gap-y-1 font-serif text-[clamp(1.5rem,3.4vw,3rem)] italic leading-tight tracking-tight text-white [text-shadow:0_2px_40px_rgba(0,0,0,0.9)] sm:mb-12">
-              <SplitWords text="We architect high-converting experiences." className="bg-word invisible" animateEntrance={false} />
-            </div>
-
-            <div className="bg-ui invisible pointer-events-auto">
+            <div className="pointer-events-auto mt-2">
               <GlowButton href="/contact" className={`${L.button} ${T.button}`}>
                 Deploy project <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
               </GlowButton>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <svg aria-hidden className="constellation pointer-events-none absolute inset-0 z-20 hidden h-full w-full opacity-0 lg:block">
-          <path
-            ref={pathRef}
-            className="constellation-path"
-            fill="none"
-            stroke="rgba(255,255,255,0.4)"
-            strokeWidth="1"
-            strokeLinecap="round"
-            strokeDasharray="1 9"
-          />
-          {LINK_ORDER.map((_, i) => (
-            <circle
-              key={i}
-              ref={(el) => {
-                nodesRef.current[i] = el;
-              }}
-              r="2.5"
-              fill="rgba(36,210,56,0.9)"
-              className="[filter:drop-shadow(0_0_6px_rgba(36,210,56,0.9))]"
-            />
-          ))}
-        </svg>
-
-        <div className="bg-layer pointer-events-none absolute inset-0 z-30 hidden overflow-hidden lg:block">
-          {HERO_CARDS.map((card, i) => (
-            <div
-              key={card.num}
-              ref={(el) => {
-                cardRefs.current[i] = el;
-              }}
-              className={`tangled-card invisible absolute w-[230px] overflow-hidden rounded-2xl border p-5 backdrop-blur-2xl [transform-style:preserve-3d] xl:w-[265px] ${S.border} ${S.card} ${S.lift} ${HERO_CARD_POSITIONS[i]}`}
-            >
-              <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-
-              <div className="mb-4 flex items-center gap-2.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-green shadow-[0_0_10px_rgba(36,210,56,0.9)]" />
-                <span className={`text-brand-green ${T.label}`}>
-                  {card.num} <span className="text-white/35">/ {card.tag}</span>
-                </span>
-              </div>
-
-              <h4 className="mb-2 font-serif text-lg font-light text-white xl:text-xl">{card.title}</h4>
-              <p className="font-sans text-[0.78rem] font-light leading-relaxed text-white/70">{card.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Sound control. The video always starts muted — this is the user
-            gesture browsers require before audio is allowed. */}
-        <div className="fg-ui absolute bottom-8 right-5 z-30 sm:bottom-10 sm:right-8">
+        <div className="absolute bottom-8 right-5 z-30 sm:bottom-10 sm:right-8">
           <SoundToggle videoRef={videoRef} />
         </div>
-
-        <div className="fg-ui pointer-events-none absolute inset-x-0 bottom-8 z-20 flex flex-col items-center gap-3 sm:bottom-10">
-          <span className={`text-white/45 ${T.label}`}>Scroll</span>
-          <span className="relative h-10 w-px overflow-hidden bg-white/20">
-            <span className="scroll-line absolute inset-x-0 top-0 h-1/2 bg-white/80" />
-          </span>
-        </div>
       </div>
     </section>
   );
 }
 
-/* ---------- Trust: sticky stacking cards ---------- */
+/* ---------- The Problem ---------- */
+function Problem() {
+  const ref = useRef<HTMLElement>(null);
+  const statement = "Having a business is one thing. Making people notice it is another.";
 
-function TrustStack() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useGSAP(() => {
-      const mm = gsap.matchMedia();
-
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const cards = gsap.utils.toArray<HTMLElement>(".trust-card", sectionRef.current);
-
-        cards.forEach((card, i) => {
-          if (i === cards.length - 1) return;
-          const next = cards[i + 1];
-
-          gsap.to(card, {
-            scale: 0.94,
-            opacity: 0.45,
-            ease: "none",
-            scrollTrigger: { trigger: next, start: "top bottom", end: "top center", scrub: true },
-          });
-        });
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.fromTo(
+        ".pb-word",
+        { opacity: 0.15 },
+        {
+          opacity: 1,
+          stagger: 0.05,
+          ease: "none",
+          scrollTrigger: { trigger: ".pb-statement", start: "top 80%", end: "bottom 50%", scrub: true },
+        }
+      );
+      gsap.from(".pb-item", {
+        y: 24,
+        autoAlpha: 0,
+        stagger: 0.1,
+        duration: 0.8,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ".pb-list", start: "top 85%" },
       });
-
-      return () => mm.revert();
     },
-    { scope: sectionRef }
+    { scope: ref }
   );
 
   return (
-    <section ref={sectionRef} className={`relative w-full ${S.page} ${L.gutter} pb-28 pt-28 sm:pb-36 sm:pt-36`}>
-      <div className={`${L.container} mb-16 sm:mb-24`}>
-        <p className={`mb-6 flex items-center gap-4 ${T.label}`}>
-          <span className="h-px w-10 bg-brand-green" />
-          Why teams trust us
-        </p>
-        <h2 className={`max-w-4xl text-white ${T.h2}`}>
-          Five disciplines. One studio. <span className="italic text-white/50">No hand-offs.</span>
+    <section id="about" ref={ref} className={`relative z-10 w-full ${L.gutter} py-24 sm:py-36`}>
+      <div className={L.container}>
+        <p className={`mb-6 ${TYPE.label}`}>The problem</p>
+
+        <h2 className={`pb-statement max-w-5xl text-white ${TYPE.statement}`}>
+          {statement.split(" ").map((w, i) => (
+            <span key={i} className="pb-word inline-block pr-[0.22em]">
+              {w}
+            </span>
+          ))}
         </h2>
-        <p className={`mt-8 max-w-xl ${T.body}`}>
-          Most brands stitch together a strategist, a designer, a developer and a marketer who never
-          speak. We run all five in one room, which is why the work arrives consistent and on time.
-        </p>
-      </div>
 
-      <div className={`${L.container} flex flex-col gap-6 sm:gap-8`}>
-        {TRUST_CARDS.map((card, i) => (
-          <article
-            key={card.num}
-            className={`trust-card sticky origin-top overflow-hidden rounded-3xl border backdrop-blur-xl will-change-transform ${S.border} ${S.panel}`}
-            style={{ top: `calc(12vh + ${i * 14}px)`, zIndex: i + 1, boxShadow: `0 2px 6px rgba(0,0,0,0.5), 0 50px 100px -60px ${card.accent.glow}` }}
-          >
-            <span className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${card.accent.rule} to-transparent opacity-70`} />
-            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${card.accent.panel} to-transparent`} />
-
-            <div className="relative grid gap-8 p-8 sm:p-10 lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-14 lg:p-14">
-              <div>
-                <div className="mb-6 flex items-center gap-3">
-                  <span className={`${card.accent.text} ${T.label}`}>{card.num}</span>
-                  <span className={`h-px w-8 ${card.accent.rule} opacity-60`} />
-                  <span className={T.label}>Service</span>
-                </div>
-                <h3 className="mb-3 font-serif text-[clamp(1.75rem,4vw,3rem)] font-light leading-[1.05] tracking-[-0.02em] text-white">
-                  {card.service}
-                </h3>
-                <p className={`mb-5 font-serif text-[clamp(1.0625rem,1.8vw,1.5rem)] italic leading-snug ${card.accent.text}`}>
-                  {card.value}
-                </p>
-                <p className={`max-w-lg ${T.body}`}>{card.desc}</p>
-              </div>
-
-              <div className="relative overflow-hidden rounded-2xl border border-white/[0.12] bg-black/30 p-6 sm:p-8">
-                <span className={`mb-4 block ${card.accent.text} ${T.label}`}>The proof</span>
-                <p className="font-sans text-[0.9375rem] font-light leading-relaxed text-white/85 sm:text-base">{card.fact}</p>
-                <span className="pointer-events-none absolute -bottom-4 -right-1 font-serif text-[5rem] font-light leading-none text-white/[0.07]">
-                  {card.num}
-                </span>
-              </div>
+        <div className="pb-list mt-16 grid gap-10 border-t border-white/10 pt-10 sm:mt-24 md:grid-cols-3 md:gap-8">
+          {PROBLEMS.map((p) => (
+            <div key={p.title} className="pb-item">
+              <h3 className={`text-white ${TYPE.h3}`}>{p.title}</h3>
+              <p className={`mt-3 max-w-xs text-white/55 ${TYPE.small} sm:text-base`}>{p.desc}</p>
             </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
+          ))}
+        </div>
 
-/* ---------- The Standard: horizontal pipeline ---------- */
-
-function StandardQueue() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-
-  useGSAP(() => {
-      const track = trackRef.current;
-      if (!track) return;
-
-      const distance = () => track.scrollWidth - window.innerWidth;
-      const cards = gsap.utils.toArray<HTMLElement>(".standard-card", sectionRef.current);
-
-      gsap.to(track, {
-        x: () => -distance(),
-        ease: "none",
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          pin: true,
-          scrub: 1,
-          start: "top top",
-          end: () => `+=${distance()}`,
-          invalidateOnRefresh: true,
-          refreshPriority: PRIORITY.pipeline,
-          onUpdate: () => {
-            const trackX = Number(gsap.getProperty(track, "x"));
-            cards.forEach((card) => {
-              const offset = offsetFromCenter(card, trackX);
-              const dist = Math.abs(offset);
-              gsap.set(card, {
-                scale: gsap.utils.clamp(0.82, 1.02, 1.02 - dist * 0.3),
-                opacity: gsap.utils.clamp(0.4, 1, 1 - dist * 0.7),
-                rotateY: offset * 8,
-                transformPerspective: 1200,
-              });
-            });
-          },
-        },
-      });
-    },
-    { scope: sectionRef }
-  );
-
-  return (
-    <section ref={sectionRef} className={`relative w-full overflow-hidden border-y border-white/[0.08] ${S.panel} ${L.screen}`}>
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <motion.div animate={{ x: ["-8%", "12%", "-8%"], y: ["0%", "-10%", "0%"] }} transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }} className="absolute left-[22%] top-[35%] h-[60vw] w-[60vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-blue/30 blur-[130px]" />
-        <motion.div animate={{ x: ["6%", "-10%", "6%"], y: ["-4%", "8%", "-4%"] }} transition={{ duration: 36, repeat: Infinity, ease: "easeInOut" }} className="absolute left-[70%] top-[65%] h-[50vw] w-[50vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400/10 blur-[150px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
-        <div className="absolute inset-x-0 top-[38%] h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-      </div>
-
-      <div className="pointer-events-none absolute left-1/2 top-[38%] z-0 -translate-x-1/2 -translate-y-1/2">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute h-[300px] w-[300px] rounded-full border border-white/10 sm:h-[400px] sm:w-[400px] lg:h-[500px] lg:w-[500px]" />
-          <div className="absolute h-[320px] w-[320px] animate-[spin_14s_linear_infinite_reverse] rounded-full border-b border-t border-brand-green/25 sm:h-[420px] sm:w-[420px] lg:h-[520px] lg:w-[520px]" />
+        <div className="mt-20 grid gap-8 rounded-xl border border-brand-green/25 bg-brand-green/[0.06] p-8 sm:mt-28 sm:p-12 lg:grid-cols-[1fr_1.3fr] lg:items-center lg:gap-16">
+          <p className={`text-white ${TYPE.h2}`}>That&apos;s where we come in.</p>
+          <div>
+            <p className={`text-white/75 ${TYPE.body}`}>
+              Modern4labs brings creative ideas, strategy, video, design, websites and automation together, so your brand gets noticed and that
+              attention turns into enquiries.
+            </p>
+            <Link href={AUDIT_HREF} className={`mt-8 ${BTN.base} ${BTN.green}`}>
+              Book a free audit <ArrowRight size={16} />
+            </Link>
+          </div>
         </div>
       </div>
-
-      <div className="pointer-events-none absolute inset-x-0 top-8 z-30 text-center sm:top-12">
-        <h2 className={T.label}>The Standard — studied, not copied</h2>
-      </div>
-
-      <div ref={trackRef} className="flex h-full w-fit items-center px-[7.5vw] will-change-transform sm:px-[17.5vw] md:px-[25vw] lg:px-[30vw]">
-        {GREATS.map((person, i) => (
-          <div key={person.num} className="standard-card relative flex h-full w-[85vw] shrink-0 flex-col items-center justify-center [transform-style:preserve-3d] sm:w-[65vw] md:w-[50vw] lg:w-[40vw]">
-            <TiltCard max={10} className="relative w-[200px] sm:w-[240px] lg:w-[280px]">
-              <div className={`relative aspect-[4/5] overflow-hidden rounded-2xl border ${S.border} ${S.lift}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={person.img} alt={person.name} loading={i < 2 ? "eager" : "lazy"} decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
-                <span className={`absolute left-4 top-4 rounded-full bg-black/45 px-2.5 py-1 backdrop-blur-md ${T.label} text-white/80`}>{person.num}</span>
-              </div>
-              <div className="pointer-events-none absolute inset-x-6 top-full h-16 origin-top scale-y-[-1] overflow-hidden rounded-b-2xl opacity-25 [mask-image:linear-gradient(to_top,transparent,black)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={person.img} alt="" aria-hidden loading="lazy" decoding="async" className="h-full w-full object-cover object-top blur-[2px]" />
-              </div>
-            </TiltCard>
-
-            <div className="mt-24 w-[88%] max-w-[340px] text-center sm:mt-28">
-              <div className="mb-4 flex items-center justify-center gap-3">
-                <span className="h-px w-6 bg-brand-green/60" />
-                <span className={`text-brand-green ${T.label}`}>{person.trait}</span>
-                <span className="h-px w-6 bg-brand-green/60" />
-              </div>
-              <h3 className="mb-3 font-serif text-[clamp(1.75rem,3.2vw,2.75rem)] font-light leading-tight tracking-tight text-white">{person.name}</h3>
-              <p className="font-sans text-[0.875rem] font-light leading-relaxed text-white/70 sm:text-base">{person.lesson}</p>
-            </div>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
 
-/* ---------- Selected Works ---------- */
+/* ---------- Global presence map ---------- */
+/* Map crop: Europe → Asia → Australia */
+const MAP_REGION = { lat: { min: -46, max: 70 }, lng: { min: -16, max: 168 } };
+const MAP_PAD = 1;
+const DOT_R = 0.26;
+const GLOW_RANGE = 7;
+const GLOW_OPACITY = [0.95, 0.6, 0.36, 0.2];
+const GREEN = "#24d238";
 
-type TrailItem = { id: number; x: number; y: number; img: string; rotate: number; z: number };
-const TRAIL = { distance: 90, lifetime: 1200 };
+type Pin = Hub & { x: number; y: number };
+type MapData = {
+  w: number;
+  h: number;
+  base: string;
+  glow: string[];
+  pins: Pin[];
+  arcs: { id: string; d: string; from: Pin; to: Pin }[];
+};
 
-function WorkHoverTrail() {
-  const [trail, setTrail] = useState<TrailItem[]>([]);
-  const containerRef = useRef<HTMLElement>(null);
-  const lastPos = useRef({ x: 0, y: 0 });
-  const imageIndex = useRef(0);
-  const zCounter = useRef(10);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+let mapCache: MapData | null = null;
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+const dotPath = (x: number, y: number, r: number) =>
+  `M${(x - r).toFixed(3)} ${y.toFixed(3)}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0`;
 
-  const handleMouseMove = useCallback((e: MouseEvent<HTMLElement>) => {
-    const el = containerRef.current;
-    if (!el) return;
+function buildMap(): MapData {
+  if (mapCache) return mapCache;
 
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    if (Math.hypot(x - lastPos.current.x, y - lastPos.current.y) < TRAIL.distance) return;
-    lastPos.current = { x, y };
+  const map = new DottedMap({ height: 70, grid: "diagonal", region: MAP_REGION });
 
-    const item: TrailItem = {
-      id: Date.now() + Math.random(),
-      x,
-      y,
-      img: TRAIL_IMAGES[imageIndex.current % TRAIL_IMAGES.length],
-      rotate: Math.random() * 16 - 8,
-      z: ++zCounter.current,
-    };
-    imageIndex.current += 1;
+  const pins: Pin[] = HUBS.map((hub) => {
+    const point = map.getPin({ lat: hub.lat, lng: hub.lng });
+    if (!point) throw new Error("Unable to locate hub on map");
+    const { x, y } = point;
+    return { ...hub, x, y };
+  });
 
-    setTrail((prev) => [...prev, item]);
-    timers.current.push(setTimeout(() => setTrail((prev) => prev.filter((t) => t.id !== item.id)), TRAIL.lifetime));
+  let w = 0;
+  let h = 0;
+  let base = "";
+  const glow = ["", "", "", ""];
+
+  for (const p of map.getPoints()) {
+    w = Math.max(w, p.x);
+    h = Math.max(h, p.y);
+
+    let d = Infinity;
+    for (const pin of pins) d = Math.min(d, Math.hypot(p.x - pin.x, p.y - pin.y));
+
+    if (d < GLOW_RANGE) glow[Math.min(3, Math.floor((d / GLOW_RANGE) * 4))] += dotPath(p.x, p.y, DOT_R);
+    else base += dotPath(p.x, p.y, DOT_R);
+  }
+
+  const hq = pins.find((p) => p.hq)!;
+  const arcs = pins
+    .filter((p) => !p.hq)
+    .map((to) => {
+      const dx = to.x - hq.x;
+      const dy = to.y - hq.y;
+      const dist = Math.hypot(dx, dy);
+      let nx = -dy / dist;
+      let ny = dx / dist;
+      if (ny > 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+      const bend = dist * 0.22;
+      const cx = (hq.x + to.x) / 2 + nx * bend;
+      const cy = (hq.y + to.y) / 2 + ny * bend;
+      return { id: to.id, d: `M${hq.x} ${hq.y} Q${cx} ${cy} ${to.x} ${to.y}`, from: hq, to };
+    });
+
+  mapCache = { w: w + MAP_PAD * 2, h: h + MAP_PAD * 2, base, glow, pins, arcs };
+  return mapCache;
+}
+
+function useNow() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
   }, []);
+  return now;
+}
 
+const formatTime = (d: Date | null, tz: string) =>
+  d ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz }).format(d) : "--:--";
+
+function OrbitMark() {
   return (
-    <section ref={containerRef} onMouseMove={handleMouseMove} className={`relative flex w-full flex-col items-center justify-center overflow-hidden ${S.page} md:cursor-crosshair ${L.gutter} ${L.block} md:h-[100svh] md:py-0`}>
-      <div className="pointer-events-none relative z-[100] flex flex-col items-center text-center mix-blend-difference">
-        <h2 className="font-serif text-[clamp(3rem,11vw,8rem)] font-light leading-[0.95] tracking-tighter text-white">
-          Selected<br /><span className="italic text-white/55">Works</span>
-        </h2>
-        <p className={`mt-6 max-w-sm sm:mt-8 ${T.label}`}>
-          <span className="hidden md:inline">Move cursor to explore our digital archive</span>
-          <span className="md:hidden">A selection from our digital archive</span>
-        </p>
-      </div>
-
-      <div className="mt-14 grid w-full max-w-md grid-cols-2 gap-4 md:hidden">
-        {TRAIL_IMAGES.slice(0, 4).map((src) => (
-          <div key={src} className={`relative aspect-[3/4] overflow-hidden rounded-xl border ${S.border} ${S.lift}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {trail.map((item) => (
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, scale: 0.6, rotate: item.rotate }}
-            animate={{ opacity: 1, scale: 1, rotate: item.rotate }}
-            exit={{ opacity: 0, scale: 0.85, filter: "blur(8px)" }}
-            transition={{ duration: 0.7, ease: EASE }}
-            className={`pointer-events-none absolute hidden overflow-hidden rounded-xl border md:block ${S.border} ${S.lift}`}
-            style={{
-              left: item.x, top: item.y, x: "-50%", y: "-50%", zIndex: item.z, width: "clamp(180px, 20vw, 320px)", aspectRatio: "3 / 4",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.img} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </section>
+    <span className="relative grid h-8 w-8 shrink-0 place-items-center">
+      <span className="absolute inset-0 rounded-full border border-dashed border-brand-green/60 motion-safe:animate-[spin_9s_linear_infinite]" />
+      <span className="absolute inset-[5px] rounded-full border border-white/20" />
+      <span className="h-1.5 w-1.5 rounded-full bg-brand-green shadow-[0_0_10px_#24d238]" />
+    </span>
   );
 }
 
-/* ---------- Client marquee ---------- */
+function GlobalPresenceMap() {
+  const ref = useRef<HTMLElement>(null);
+  const { w, h, base, glow, pins, arcs } = useMemo(buildMap, []);
+  const [active, setActive] = useState<string>("colombo");
+  const reduced = useReducedMotion();
+  const now = useNow();
 
-function ApproachMarquee() {
-  return (
-    <section className={`relative z-10 ${S.page} ${L.block}`}>
-      <div className={`mb-14 text-center sm:mb-20 ${L.gutter}`}>
-        <p className={`mb-4 ${T.label}`}>Trusted by</p>
-        <h2 className={`mx-auto max-w-3xl text-white ${T.h2}`}>Our Approach<br />To Every Build</h2>
-      </div>
+  const pct = (p: { x: number; y: number }) => ({
+    left: `${((p.x + MAP_PAD) / w) * 100}%`,
+    top: `${((p.y + MAP_PAD) / h) * 100}%`,
+  });
 
-      <div className="relative flex overflow-hidden border-y border-white/[0.08] py-7 sm:py-9">
-        <div className="pointer-events-none absolute inset-0 z-10 w-full bg-gradient-to-r from-[#0c0d10] via-transparent to-[#0c0d10]" />
-        <motion.div animate={{ x: ["0%", "-50%"] }} transition={{ duration: 44, ease: "linear", repeat: Infinity }} className="flex flex-nowrap items-center gap-12 whitespace-nowrap px-6 sm:gap-20 sm:px-12">
-          {[0, 1].map((copy) => (
-            <div key={copy} className="flex items-center gap-12 font-serif text-[clamp(1.25rem,3vw,2.5rem)] tracking-tight text-white/35 sm:gap-20">
-              {CLIENTS.map((client) => (
-                <span key={`${copy}-${client}`} className="cursor-default transition-colors duration-500 hover:text-white">{client}</span>
-              ))}
-            </div>
-          ))}
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------- 3D carousel ---------- */
-
-function Showcase3DCarousel() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const lenis = useLenis();
-
-  const dragging = useRef(false);
-  const dragStartX = useRef(0);
-  const dragStartScroll = useRef(0);
-
-  useGSAP(() => {
-      const track = trackRef.current;
-      if (!track) return;
-      const distance = () => track.scrollWidth - window.innerWidth;
-
-      gsap.to(track, {
-        x: () => -distance(),
-        ease: "none",
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top top",
-          end: () => `+=${distance()}`,
-          pin: true,
-          scrub: 1,
-          invalidateOnRefresh: true,
-          refreshPriority: PRIORITY.carousel,
-          onUpdate: () => {
-            const trackX = Number(gsap.getProperty(track, "x"));
-            cardsRef.current.forEach((card) => {
-              if (!card) return;
-              const offset = offsetFromCenter(card, trackX);
-              const rotateY = gsap.utils.clamp(-45, 45, offset * -36);
-
-              gsap.set(card, {
-                rotateY,
-                rotateZ: rotateY * 0.015,
-                scale: gsap.utils.clamp(0.84, 1, 1 - Math.abs(offset) * 0.16),
-                z: gsap.utils.clamp(-320, 0, -Math.abs(offset) * 280),
-                transformPerspective: 1400,
-              });
-
-              const content = card.querySelector(".card-content");
-              if (content) gsap.set(content, { opacity: gsap.utils.clamp(0.25, 1, 1 - Math.abs(offset) * 1.2) });
-            });
-          },
-        },
-      });
+  useGSAP(
+    () => {
+      if (reduced) return;
+      const tl = gsap.timeline({ scrollTrigger: { trigger: ref.current, start: "top 70%" } });
+      tl.from(".pm-head > *", { y: 24, autoAlpha: 0, stagger: 0.08, duration: 0.8, ease: "power3.out" })
+        .from(".pm-dots", { autoAlpha: 0, duration: 1.2, ease: "power2.out" }, "-=0.5")
+        .fromTo(".pm-arc", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.6, stagger: 0.25, ease: "power2.inOut" }, "-=0.8")
+        .from(".pm-pin", { autoAlpha: 0, y: 10, stagger: 0.12, duration: 0.6, ease: "back.out(2)" }, "-=1.2");
     },
-    { scope: sectionRef }
+    { scope: ref, dependencies: [reduced] }
   );
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "mouse" || !lenis) return;
-    dragging.current = true;
-    dragStartX.current = e.clientX;
-    dragStartScroll.current = lenis.scroll;
-    document.body.style.cursor = "grabbing";
-  };
-
-  const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
-    if (!dragging.current || !lenis) return;
-    const walk = (dragStartX.current - e.clientX) * 1.5;
-    lenis.scrollTo(dragStartScroll.current + walk, { immediate: true, force: true });
-  };
-
-  const endDrag = () => {
-    dragging.current = false;
-    document.body.style.cursor = "";
-  };
-
   return (
-    <section ref={sectionRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerLeave={endDrag} style={{ touchAction: "pan-y" }} className={`relative flex w-full flex-col justify-center overflow-hidden ${S.panel} ${L.screen}`}>
-      <div className={`pointer-events-none relative z-10 pt-24 sm:pt-28 lg:pt-32 ${L.gutter}`}>
-        <h2 className={`text-white ${T.h2}`}>Our Capabilities</h2>
-        <p className={`mt-3 ${T.label}`}>
-          <span className="hidden md:inline">Drag to explore // Scroll to navigate</span>
-          <span className="md:hidden">Scroll to navigate</span>
-        </p>
-      </div>
-
-      <div ref={trackRef} className="flex w-fit flex-1 items-center gap-6 px-[calc(50vw-110px)] will-change-transform sm:gap-8 sm:px-[calc(50vw-140px)] md:px-[calc(50vw-180px)] lg:gap-12 lg:px-[calc(50vw-210px)]">
-        {SHOWCASE_3D.map((item, i) => (
-          <div key={item.num} ref={(el) => { cardsRef.current[i] = el; }} className={`relative aspect-[3/4] w-[220px] shrink-0 overflow-hidden rounded-2xl border [transform-style:preserve-3d] sm:w-[280px] md:w-[360px] md:cursor-grab lg:w-[420px] md:active:cursor-grabbing ${S.border} ${S.lift}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.img} alt={item.title} loading={i < 2 ? "eager" : "lazy"} decoding="async" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
-
-            <div className="card-content pointer-events-none absolute inset-x-0 bottom-0 flex flex-col justify-end p-5 sm:p-6 lg:p-8">
-              <div className={`mb-3 text-brand-green ${T.label}`}>{item.num} <span className="text-white/30">/ 05</span></div>
-              <h3 className={`mb-2 text-white ${T.h3}`}>{item.title}</h3>
-              <p className={`max-w-[92%] ${T.small}`}>{item.desc}</p>
-            </div>
+    <section ref={ref} className={`relative z-10 w-full ${L.gutter} py-20 sm:py-28`}>
+      <div className={L.container}>
+        <div className="pm-head mb-10 flex flex-col justify-between gap-6 sm:mb-14 md:flex-row md:items-end">
+          <div>
+            <p className={`mb-4 ${TYPE.label}`}>Where we work</p>
+            <h2 className={`max-w-2xl text-white ${TYPE.h2}`}>Based in Colombo. Working across borders.</h2>
           </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ---------- Philosophy ---------- */
-
-function PhilosophyReveal() {
-  const containerRef = useRef<HTMLElement>(null);
-  const statement = "A brand should say something before it moves. Every line, material, and interaction is considered.";
-
-  useGSAP(() => {
-      gsap.fromTo(".reveal-word", { opacity: 0.14, y: 8 }, { opacity: 1, y: 0, stagger: 0.05, ease: "none", scrollTrigger: { trigger: containerRef.current, start: "top 75%", end: "center center", scrub: true } });
-    },
-    { scope: containerRef }
-  );
-
-  return (
-    <section ref={containerRef} className={`flex flex-col items-center justify-center text-center ${S.page} ${L.gutter} ${L.block}`}>
-      <div className="mx-auto max-w-4xl">
-        <h2 className={`flex flex-wrap justify-center gap-x-[0.25em] text-white ${T.h2}`}>
-          {statement.split(" ").map((word, i) => (
-            <span key={i} className="reveal-word inline-block will-change-[opacity,transform]">{word}</span>
-          ))}
-        </h2>
-        <div className="mt-14 flex justify-center sm:mt-20">
-          <GlowButton href="/contact" className={`${L.button} ${T.button}`}>Begin the build</GlowButton>
+          <p className={`max-w-xs text-white/60 md:text-right ${TYPE.small} sm:text-base`}>
+            Clients in Sri Lanka, Sweden and Australia, all run from one studio.
+          </p>
         </div>
-      </div>
-    </section>
-  );
-}
 
-/* ---------- Services: pinned split screen ---------- */
+        <div className="relative w-full overflow-hidden rounded-xl border border-white/[0.08] bg-[#07080a]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_55%_55%,rgba(36,210,56,0.07),transparent_70%)]" />
 
-function ServicesSplit() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const textColumnRef = useRef<HTMLDivElement>(null);
+          <div className="relative" style={{ aspectRatio: `${w} / ${h}` }}>
+            <svg
+              viewBox={`${-MAP_PAD} ${-MAP_PAD} ${w} ${h}`}
+              className="pm-dots absolute inset-0 h-full w-full [mask-image:radial-gradient(ellipse_at_center,black_62%,transparent_100%)]"
+              aria-hidden
+            >
+              <defs>
+                <filter id="pm-glow" x="-200%" y="-200%" width="500%" height="500%">
+                  <feGaussianBlur stdDeviation="0.6" result="b" />
+                  <feMerge>
+                    <feMergeNode in="b" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                {arcs.map((a) => (
+                  <linearGradient key={a.id} id={`pm-grad-${a.id}`} gradientUnits="userSpaceOnUse" x1={a.from.x} y1={a.from.y} x2={a.to.x} y2={a.to.y}>
+                    <stop offset="0%" stopColor={GREEN} stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                  </linearGradient>
+                ))}
+              </defs>
 
-  useGSAP(() => {
-      const mm = gsap.matchMedia();
+              <path d={base} fill="#ffffff" fillOpacity={0.2} />
+              {glow.map((d, i) => (
+                <path key={i} d={d} fill={GREEN} fillOpacity={GLOW_OPACITY[i]} />
+              ))}
 
-      mm.add("(min-width: 768px)", () => {
-        const textBlocks = gsap.utils.toArray<HTMLElement>(".srv-text-block", sectionRef.current);
-        const wrappers = gsap.utils.toArray<HTMLElement>(".srv-image-wrapper", sectionRef.current);
+              {arcs.map((a, i) => {
+                const on = active === a.id || active === "colombo";
+                return (
+                  <g key={a.id}>
+                    <path
+                      id={`pm-arc-${a.id}`}
+                      className="pm-arc"
+                      d={a.d}
+                      fill="none"
+                      stroke={`url(#pm-grad-${a.id})`}
+                      strokeWidth={0.16}
+                      strokeLinecap="round"
+                      strokeOpacity={on ? 1 : 0.3}
+                      pathLength={1}
+                      strokeDasharray={1}
+                    />
+                    {!reduced && (
+                      <circle r={0.42} fill={GREEN} filter="url(#pm-glow)">
+                        <animateMotion dur={`${3.4 + i * 0.7}s`} repeatCount="indefinite" calcMode="linear">
+                          <mpath href={`#pm-arc-${a.id}`} />
+                        </animateMotion>
+                        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur={`${3.4 + i * 0.7}s`} repeatCount="indefinite" />
+                      </circle>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
 
-        wrappers.forEach((w, i) => i !== 0 && gsap.set(w, { clipPath: "inset(100% 0% 0% 0%)" }));
-        textBlocks.forEach((t, i) => i !== 0 && gsap.set(t, { opacity: 0.25 }));
+            {pins.map((pin) => {
+              const isActive = active === pin.id;
+              const lit = pin.hq || isActive;
+              return (
+                <div
+                  key={pin.id}
+                  className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                  style={pct(pin)}
+                  onMouseEnter={() => setActive(pin.id)}
+                  onClick={() => setActive(pin.id)}
+                >
+                  <div className="pm-pin relative cursor-pointer">
+                    <span className="relative grid h-3 w-3 place-items-center">
+                      <span className={`absolute -inset-2 rounded-full bg-brand-green/25 motion-safe:animate-ping ${lit ? "opacity-100" : "opacity-0"}`} />
+                      <span className={`h-3 w-3 rounded-full border ${lit ? "border-brand-green bg-black shadow-[0_0_14px_#24d238]" : "border-white/50 bg-black"}`} />
+                      <span className={`absolute h-1 w-1 rounded-full ${lit ? "bg-brand-green" : "bg-white/70"}`} />
+                    </span>
 
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top top",
-            end: () => `+=${window.innerHeight * SERVICES.length}`,
-            pin: true,
-            scrub: 1,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-            refreshPriority: PRIORITY.services,
-          },
-        });
-
-        SERVICES.forEach((_, i) => {
-          if (i === 0) return;
-          const at = i - 1;
-
-          tl.to(textColumnRef.current, { y: () => `-${i * 100}svh`, ease: "none", duration: 1 }, at)
-            .to(textBlocks[i - 1], { opacity: 0.25, duration: 0.5, ease: "none" }, at + 0.25)
-            .to(textBlocks[i], { opacity: 1, duration: 0.5, ease: "none" }, at + 0.25)
-            .fromTo(wrappers[i], { clipPath: "inset(100% 0% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", ease: "none", duration: 1 }, at);
-
-          const img = wrappers[i].querySelector("img");
-          if (img) tl.fromTo(img, { yPercent: 12, scale: 1.1 }, { yPercent: 0, scale: 1, ease: "none", duration: 1 }, at);
-        });
-      });
-
-      mm.add("(max-width: 767px)", () => {
-        gsap.set(".srv-image-wrapper", { clipPath: "inset(0% 0% 0% 0%)" });
-        gsap.set(".srv-text-block", { opacity: 1 });
-      });
-
-      return () => mm.revert();
-    },
-    { scope: sectionRef }
-  );
-
-  return (
-    <section ref={sectionRef} className={`relative w-full ${S.page}`}>
-      <div className={`relative hidden overflow-hidden md:flex ${L.screen} ${L.container}`}>
-        <div className="relative h-full w-1/2">
-          <div ref={textColumnRef} className="absolute left-0 top-0 flex w-full flex-col will-change-transform">
-            {SERVICES.map((item) => (
-              <div key={item.title} className={`srv-text-block flex h-[100svh] flex-col justify-center ${L.gutter}`}>
-                <div className={`mb-5 text-brand-green ${T.label}`}>Service</div>
-                <h3 className={`mb-5 text-white ${T.h2}`}>{item.title}</h3>
-                <p className={`mb-8 max-w-sm ${T.body}`}>{item.desc}</p>
-                <div>
-                  <GlowButton href="/contact" className={`${L.button} ${T.button}`}>Start Your Project</GlowButton>
+                    <div className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 flex-col items-center">
+                      {pin.hq ? (
+                        <div className="flex items-center gap-2.5 whitespace-nowrap rounded-md border border-white/15 bg-[#0b0c0f]/90 py-1.5 pl-1.5 pr-3.5 shadow-[0_0_40px_-6px_rgba(36,210,56,0.55)] backdrop-blur-md sm:py-2 sm:pl-2 sm:pr-4">
+                          <OrbitMark />
+                          <div className="leading-none">
+                            <span className="mb-1 inline-block rounded-[3px] bg-brand-green px-1.5 py-[3px] font-sans text-[9px] font-bold text-black">HQ</span>
+                            <p className="font-sans text-xs font-bold text-white sm:text-sm">{pin.city}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span
+                          className={`whitespace-nowrap rounded-[4px] border px-2 py-[3px] font-sans text-[10px] font-semibold ${
+                            isActive ? "border-brand-green/50 bg-brand-green/15 text-brand-green" : "border-white/15 bg-black/70 text-white/70"
+                          }`}
+                        >
+                          {pin.city}
+                        </span>
+                      )}
+                      <span className="h-3 w-px bg-gradient-to-b from-white/40 to-transparent" />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+
+          <div className="relative z-10 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-white/[0.06] px-5 py-3.5 sm:px-8">
+            {HUBS.map((hub) => (
+              <span key={hub.id} className="font-sans text-xs text-white/45">
+                {hub.city} <span className={`tabular-nums ${active === hub.id ? "text-brand-green" : "text-white/85"}`}>{formatTime(now, hub.tz)}</span>
+              </span>
             ))}
           </div>
         </div>
 
-        <div className="relative flex h-full w-1/2 items-center justify-center p-6 lg:p-8">
-          {SERVICES.map((item, i) => (
-            <div key={item.title} className={`srv-image-wrapper absolute inset-y-16 left-0 right-8 overflow-hidden rounded-2xl border will-change-transform lg:inset-y-20 lg:right-12 ${S.border} ${S.lift}`} style={{ zIndex: i }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.img} alt={item.title} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="velocity-skew h-full w-full object-cover will-change-transform" />
-            </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {HUBS.map((hub) => {
+            const isActive = active === hub.id;
+            return (
+              <button
+                key={hub.id}
+                type="button"
+                onMouseEnter={() => setActive(hub.id)}
+                onFocus={() => setActive(hub.id)}
+                onClick={() => setActive(hub.id)}
+                className={`rounded-lg border p-5 text-left transition-colors duration-300 ${
+                  isActive ? "border-brand-green/40 bg-brand-green/[0.06]" : "border-white/[0.07] bg-white/[0.02] hover:border-white/15"
+                }`}
+              >
+                <p className="font-sans text-lg font-bold text-white">
+                  {hub.city} <span className="font-normal text-white/40">{hub.country}</span>
+                </p>
+                <p className="mt-1 font-sans text-sm text-white/55">{hub.role}</p>
+                <p className="mt-3 font-sans text-xs text-white/40">{hub.clients.join(", ")}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Client logos ---------- */
+function ClientLogos() {
+  const ref = useRef<HTMLElement>(null);
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.from(".cl-item", {
+        y: 24,
+        autoAlpha: 0,
+        stagger: 0.06,
+        duration: 0.7,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ref.current, start: "top 85%" },
+      });
+    },
+    { scope: ref }
+  );
+
+  return (
+    <section ref={ref} className={`relative z-10 w-full ${L.gutter} pb-24 sm:pb-32`}>
+      <div className={`${L.container} border-t border-white/[0.06] pt-16 sm:pt-20`}>
+        <h2 className={`cl-item mb-10 text-center text-white ${TYPE.h2}`}>Brands that trust us</h2>
+
+        <ul className="mx-auto flex max-w-4xl flex-wrap justify-center gap-3 sm:gap-4">
+          {CLIENTS.map((client) => (
+            <li key={client.name} className="cl-item w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.667rem)] lg:w-[calc(25%-0.75rem)]">
+              <div className="flex h-28 items-center justify-center rounded-lg bg-white px-6 transition-transform duration-300 hover:-translate-y-1 sm:h-32">
+                <div className="relative h-12 w-full max-w-[160px] sm:h-14">
+                  <Image src={client.logo} alt={client.name} fill sizes="160px" className="object-contain object-center" />
+                </div>
+              </div>
+            </li>
           ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Work ---------- */
+function Work() {
+  return (
+    <section id="work" className="relative w-full overflow-hidden bg-[#0c0d10] py-24 sm:py-32">
+      <div className={`mb-14 ${L.gutter} sm:mb-20`}>
+        <div className={`${L.container} flex flex-col justify-between gap-6 md:flex-row md:items-end`}>
+          <div>
+            <p className={`mb-4 ${TYPE.label}`}>Our work</p>
+            <h2 className={`max-w-2xl text-white ${TYPE.h2}`}>Work that gets noticed.</h2>
+          </div>
+          <p className={`max-w-xs text-white/60 md:text-right ${TYPE.small} sm:text-base`}>Reels, ads and pages made for real clients.</p>
         </div>
       </div>
 
-      <div className={`flex flex-col gap-16 md:hidden ${L.gutter} ${L.block}`}>
-        {SERVICES.map((item) => (
-          <div key={item.title} className="flex flex-col gap-6">
-            <div className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl border ${S.border} ${S.lift}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.img} alt={item.title} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-            </div>
-            <div>
-              <div className={`mb-3 text-brand-green ${T.label}`}>Service</div>
-              <h3 className={`mb-3 text-white ${T.h3}`}>{item.title}</h3>
-              <p className={T.body}>{item.desc}</p>
-            </div>
+      <div className="flex flex-col gap-5 sm:gap-6">
+        {[0, 1].map((row) => (
+          <div key={row} className="flex w-full">
+            <motion.div
+              animate={{ x: row === 0 ? ["0%", "-50%"] : ["-50%", "0%"] }}
+              transition={{ duration: row === 0 ? 55 : 65, ease: "linear", repeat: Infinity }}
+              className="flex w-max gap-5 px-3 sm:gap-6"
+            >
+              {[0, 1].map((copy) => (
+                <div key={copy} className="flex gap-5 sm:gap-6">
+                  {(row === 0 ? PROJECT_IMAGES : [...PROJECT_IMAGES].reverse()).map((img, i) => (
+                    <div
+                      key={i}
+                      className="group relative h-[220px] w-[320px] overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.03] sm:h-[320px] sm:w-[460px] lg:h-[380px] lg:w-[580px]"
+                    >
+                      <Image
+                        src={img}
+                        alt={`Modern4labs project ${i + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 320px, (max-width: 1024px) 460px, 580px"
+                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </motion.div>
           </div>
         ))}
       </div>
@@ -1045,40 +976,639 @@ function ServicesSplit() {
   );
 }
 
-/* ========================================================================== */
-/* 5. HOMEPAGE SPECIFIC HELPERS                                               */
-/* ========================================================================== */
 
-function SplitWords({ text, className = "", animateEntrance = true }: { text: string; className?: string; animateEntrance?: boolean }) {
-  return (
-    <>
-      {text.split(" ").map((word, i) => (
-        <span key={i} className={`inline-block origin-center will-change-transform ${className}`}>
-          {animateEntrance ? <motion.span variants={fadeUp} className="inline-block">{word}</motion.span> : word}
-        </span>
-      ))}
-    </>
-  );
-}
+/* ---------- Services (accordion + cursor preview) ---------- */
 
-function FgBlock({ children, className = "" }: { children: ReactNode; className?: string }) {
+function PreviewMock({ kind }: { kind: ServicePreview }) {
+  if (kind === "video") {
+    return (
+      <div className="relative mx-auto aspect-[9/16] h-full overflow-hidden rounded-xl border border-white/15 bg-gradient-to-br from-brand-green/50 via-[#0f2a17] to-black p-3">
+        <div className="flex items-center gap-1.5">
+          <span className="h-5 w-5 rounded-full bg-white/80" />
+          <span className="h-1.5 w-14 rounded-full bg-white/60" />
+        </div>
+        <div className="absolute inset-0 grid place-items-center">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/90 shadow-xl">
+            <svg viewBox="0 0 24 24" className="ml-0.5 h-5 w-5 fill-black">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+        </div>
+        <div className="absolute inset-x-3 bottom-4 space-y-1.5">
+          <span className="block h-2 w-4/5 rounded-full bg-white/80" />
+          <span className="block h-2 w-3/5 rounded-full bg-white/50" />
+          <span className="mt-3 block h-0.5 w-full overflow-hidden rounded-full bg-white/20">
+            <motion.span
+              className="block h-full bg-brand-green"
+              animate={{ width: ["0%", "100%"] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            />
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "ads") {
+    return (
+      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-white/15 bg-white text-black">
+        <div className="flex items-center gap-2 p-3">
+          <span className="h-6 w-6 rounded-full bg-brand-green" />
+          <div>
+            <span className="block h-1.5 w-16 rounded-full bg-black/70" />
+            <span className="mt-1 block text-[8px] text-black/50">Sponsored</span>
+          </div>
+        </div>
+        <div className="relative flex-1 bg-gradient-to-br from-blue-500 to-blue-800">
+          <div className="absolute bottom-3 left-3 flex items-end gap-1.5">
+            {[18, 28, 22, 38, 52].map((h, i) => (
+              <motion.span
+                key={i}
+                className="w-3 rounded-sm bg-white/85"
+                initial={{ height: 0 }}
+                animate={{ height: h }}
+                transition={{ delay: 0.1 + i * 0.08, duration: 0.5, ease: EASE }}
+              />
+            ))}
+          </div>
+          <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-bold text-blue-700">+ leads</span>
+        </div>
+        <div className="flex items-center justify-between p-3">
+          <span className="text-[10px] font-bold">Book a viewing</span>
+          <span className="rounded-md bg-black px-2 py-1 text-[9px] font-bold text-white">Learn more</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "page") {
+    return (
+      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-white/15 bg-[#f6f7f9] text-black">
+        <div className="flex items-center gap-1 border-b border-black/10 bg-white px-3 py-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-black/20" />
+          <span className="h-1.5 w-1.5 rounded-full bg-black/20" />
+          <span className="h-1.5 w-1.5 rounded-full bg-black/20" />
+          <span className="ml-2 h-2 flex-1 rounded-full bg-black/5" />
+        </div>
+        <div className="flex flex-1 flex-col gap-2 p-4">
+          <span className="h-3 w-4/5 rounded-full bg-black/80" />
+          <span className="h-3 w-3/5 rounded-full bg-black/80" />
+          <span className="mt-1 h-1.5 w-full rounded-full bg-black/15" />
+          <span className="h-1.5 w-5/6 rounded-full bg-black/15" />
+          <div className="mt-auto space-y-1.5 rounded-xl bg-white p-3 shadow-sm">
+            <span className="block h-5 rounded-md border border-black/10" />
+            <span className="block h-5 rounded-md border border-black/10" />
+            <motion.span
+              className="block h-6 rounded-md bg-brand-green"
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const bubbles = [
+    { me: false, w: "w-3/4", text: "Hi, I saw your ad. Is this still available?" },
+    { me: true, w: "w-2/3", text: "Yes! Here's a link to book a quick call." },
+    { me: false, w: "w-1/2", text: "Booked for Friday 👍" },
+  ];
   return (
-    <div className={`fg-ui ${className}`}>
-      <motion.div variants={fadeUp}>{children}</motion.div>
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-white/15 bg-[#0b141a]">
+      <div className="flex items-center gap-2 bg-[#1f2c33] px-3 py-2.5">
+        <span className="h-6 w-6 rounded-full bg-brand-green/80" />
+        <span className="text-[10px] font-bold text-white">New lead</span>
+        <span className="ml-auto text-[9px] text-brand-green">online</span>
+      </div>
+      <div className="flex flex-1 flex-col justify-end gap-2 p-3">
+        {bubbles.map((b, i) => (
+          <motion.p
+            key={i}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 + i * 0.35, duration: 0.35 }}
+            className={`${b.w} rounded-lg px-2.5 py-1.5 text-[10px] leading-snug ${
+              b.me ? "self-end bg-[#005c4b] text-white" : "self-start bg-[#202c33] text-white/90"
+            }`}
+          >
+            {b.text}
+          </motion.p>
+        ))}
+      </div>
     </div>
   );
 }
 
-function LabCompass() {
+function Services() {
+  const ref = useRef<HTMLElement>(null);
+  const [open, setOpen] = useState(0);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [fine, setFine] = useState(false);
+
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const sx = useSpring(mx, { stiffness: 260, damping: 28, mass: 0.6 });
+  const sy = useSpring(my, { stiffness: 260, damping: 28, mass: 0.6 });
+
+  useEffect(() => {
+    setFine(isFinePointer() && !prefersReducedMotion());
+  }, []);
+
+  const onMove = (e: MouseEvent<HTMLElement>) => {
+    if (!fine || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    mx.set(x > r.width * 0.6 ? x - 244 : x + 24);
+    my.set(e.clientY - r.top - 140);
+  };
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.utils.toArray<HTMLElement>(".svc-line").forEach((line) => {
+        gsap.fromTo(line, { scaleX: 0 }, { scaleX: 1, duration: 1.2, ease: "power3.inOut", scrollTrigger: { trigger: line, start: "top 92%" } });
+      });
+      gsap.from(".svc-row-inner", {
+        y: 30,
+        autoAlpha: 0,
+        stagger: 0.1,
+        duration: 0.8,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ".svc-list", start: "top 80%" },
+      });
+    },
+    { scope: ref }
+  );
+
   return (
-    <svg viewBox="0 0 1000 1000" className="pointer-events-none h-[130vw] max-h-[900px] w-[130vw] max-w-[900px] animate-[spin_120s_linear_infinite] opacity-30">
-      <circle cx="500" cy="500" r="400" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 16" className="text-brand-green/30" />
-      <circle cx="500" cy="500" r="460" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="1 8" className="text-white/10" />
-      <path id="curve" d="M 500, 500 m -430, 0 a 430,430 0 1,1 860,0 a 430,430 0 1,1 -860,0" fill="transparent" />
-      <text className="fill-white/20 font-mono text-[11px] uppercase tracking-[0.5em]">
-        <textPath href="#curve" startOffset="0%">Creative Engineering • Measurable Growth • Cognitive Impact • Scalable Systems • </textPath>
-        <textPath href="#curve" startOffset="50%">Creative Engineering • Measurable Growth • Cognitive Impact • Scalable Systems • </textPath>
-      </text>
+    <section id="services" ref={ref} onMouseMove={onMove} className={`relative w-full ${L.gutter} py-16 sm:py-24`}>
+      <div className={`${L.container} relative overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#15171c] via-[#0b0c0f] to-black px-5 py-14 sm:px-10 sm:py-20 lg:px-14`}>
+        {/* Header */}
+        <div className="relative mb-14 grid gap-6 sm:mb-20 lg:grid-cols-[110px_1fr] lg:gap-x-8">
+          <p className={`lg:pt-6 ${TYPE.label}`}>What we do</p>
+          <div>
+            <h2 className="relative inline-block font-sans text-[clamp(3.5rem,11vw,9rem)] font-bold leading-[0.9] tracking-[-0.05em] text-white">
+              <span className="block overflow-hidden pb-[0.08em]">
+                <motion.span className="block" variants={lineMask} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.6 }}>
+                  Services.
+                </motion.span>
+              </span>
+              <span className="absolute -right-2 top-1 translate-x-full font-sans text-[clamp(1rem,2.4vw,1.75rem)] font-medium tracking-normal text-white/35">
+                ({SERVICES.length})
+              </span>
+            </h2>
+            <p className={`mt-6 max-w-lg text-white/65 ${TYPE.body}`}>Four services, one team. Built to work together.</p>
+          </div>
+        </div>
+
+        {/* Rows */}
+        <div className="svc-list relative" onMouseLeave={() => setHovered(null)}>
+          {SERVICES.map((s, i) => {
+            const isOpen = open === i;
+            return (
+              <div key={s.id} className="relative" onMouseEnter={() => setHovered(i)}>
+                <span className="svc-line absolute inset-x-0 top-0 h-px origin-left bg-white/[0.12]" />
+
+                <div className="svc-row-inner">
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={`svc-panel-${s.id}`}
+                    onClick={() => setOpen(isOpen ? -1 : i)}
+                    className="group grid w-full grid-cols-[1fr_auto] items-start gap-x-4 gap-y-5 rounded-md py-8 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green sm:py-10 lg:grid-cols-[110px_1.2fr_1fr_44px] lg:gap-x-8"
+                  >
+                    <span className="col-start-1 row-start-1 font-sans text-sm tabular-nums text-white/45 lg:pt-3">({s.num})</span>
+
+                    <span
+                      className={`col-start-2 row-start-1 grid h-11 w-11 place-items-center rounded-full border transition-colors duration-300 lg:col-start-4 ${
+                        isOpen ? "border-white bg-white" : "border-white/20 group-hover:border-white/50"
+                      }`}
+                    >
+                      <span className="relative block h-3.5 w-3.5">
+                        <span className={`absolute left-0 top-1/2 h-[1.5px] w-full -translate-y-1/2 ${isOpen ? "bg-black" : "bg-white"}`} />
+                        <span
+                          className={`absolute left-1/2 top-0 h-full w-[1.5px] -translate-x-1/2 transition-transform duration-300 ${isOpen ? "rotate-90 bg-black" : "bg-white"}`}
+                        />
+                      </span>
+                    </span>
+
+                    <div className="col-span-2 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+                      <h3 className={`transition-colors duration-300 ${TYPE.h3} !text-[clamp(1.75rem,3.2vw,2.75rem)] ${isOpen ? "text-white" : "text-white/70 group-hover:text-white"}`}>
+                        {s.title}
+                      </h3>
+                      <p className={`mt-3 max-w-md text-white/60 ${TYPE.small} sm:text-base`}>{s.promise}</p>
+                    </div>
+
+                    <div className="col-span-2 lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:pt-2">
+                      <p className="mb-3 font-sans text-xs text-white/40">What&apos;s included</p>
+                      <div className="flex flex-wrap gap-2">
+                        {s.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className={`rounded-[4px] border px-2.5 py-1 font-sans text-xs font-medium transition-colors duration-300 ${
+                              isOpen ? "border-white bg-white text-black" : "border-white/15 text-white/70"
+                            }`}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        id={`svc-panel-${s.id}`}
+                        key="panel"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.5, ease: EASE }}
+                        className="overflow-hidden"
+                      >
+                        <div className="grid gap-6 pb-10 lg:grid-cols-[110px_1fr_44px] lg:gap-x-8">
+                          <div className="hidden lg:block" />
+                          <div className="grid gap-6 rounded-lg border border-white/[0.08] bg-white/[0.03] p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
+                            <div>
+                              <p className="mb-2 font-sans text-xs font-semibold text-brand-green">What you get</p>
+                              <p className="font-sans text-base leading-relaxed text-white/85 sm:text-lg">{s.monthly}</p>
+                              {s.proof && (
+                                <p className="mt-4 font-sans text-sm text-white/50">
+                                  Working with <span className="font-semibold text-white">{s.proof}</span>
+                                </p>
+                              )}
+                            </div>
+                            <Link href={`/contact?service=${s.id}`} className={`${BTN.base} ${BTN.green} justify-self-start sm:justify-self-end`}>
+                              Book a free audit <ArrowRight size={16} />
+                            </Link>
+                          </div>
+                          <div className="mx-auto h-64 w-52 lg:hidden">
+                            <PreviewMock kind={s.preview} />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="relative grid gap-6 pt-10 lg:grid-cols-[110px_1fr_auto] lg:items-center lg:gap-x-8">
+          <span className="svc-line absolute inset-x-0 top-0 h-px origin-left bg-white/[0.12]" />
+          <div className="hidden lg:block" />
+          <p className={`max-w-md text-white/60 ${TYPE.small} sm:text-base`}>
+            <span className="font-bold text-white">Prices on the table.</span> Fixed monthly packages. You see the price before the first call.
+          </p>
+          <Link href="/contact" className={`${BTN.base} ${BTN.white} justify-self-start`}>
+            Get started
+          </Link>
+        </div>
+      </div>
+
+      {fine && (
+        <motion.div aria-hidden className="pointer-events-none absolute left-0 top-0 z-30 hidden h-[280px] w-[220px] lg:block" style={{ x: sx, y: sy }}>
+          <AnimatePresence>
+            {hovered !== null && (
+              <motion.div
+                key={hovered}
+                initial={{ opacity: 0, scale: 0.85, rotate: -4 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.9, rotate: 3 }}
+                transition={{ duration: 0.35, ease: EASE }}
+                className="absolute inset-0 drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]"
+              >
+                <PreviewMock kind={SERVICES[hovered].preview} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </section>
+  );
+}
+
+/* ---------- Compare: why not do it yourself? ---------- */
+function Check({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" className={`h-4 w-4 shrink-0 ${className}`} fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+      <path d="M4 10.5l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function Compare() {
+  const ref = useRef<HTMLElement>(null);
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.from(".cmp-head > *", {
+        y: 30,
+        autoAlpha: 0,
+        stagger: 0.08,
+        duration: 0.8,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ref.current, start: "top 75%" },
+      });
+      gsap.from(".cmp-row", {
+        y: 16,
+        autoAlpha: 0,
+        stagger: 0.07,
+        duration: 0.6,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ".cmp-table", start: "top 80%" },
+      });
+    },
+    { scope: ref }
+  );
+
+  return (
+    <section ref={ref} className={`relative w-full ${L.gutter} py-16 sm:py-24`}>
+      <div className={`${L.container} rounded-xl bg-[#f2f2f0] px-5 py-12 text-[#0c0d10] sm:px-10 sm:py-16 lg:px-14 lg:py-20`}>
+        <div className="cmp-head mb-12 grid gap-6 sm:mb-16 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+          <div>
+            <p className={`mb-4 text-[#0c0d10]/50 ${T.label}`}>Why modern4labs</p>
+            <h2 className={`text-[#0c0d10] ${TYPE.h2}`}>
+              Why not just
+              <br />
+              <span className="text-black/35">do it yourself?</span>
+            </h2>
+          </div>
+          <p className="max-w-md font-sans text-base leading-relaxed text-black/65 sm:text-lg lg:justify-self-end">
+            You could. Here&apos;s what changes when a team built for attention does it with you.
+          </p>
+        </div>
+
+        {/* Desktop table */}
+        <div className="cmp-table hidden md:block" role="table" aria-label="Doing it yourself versus a typical provider versus Modern4labs">
+          <div className="grid grid-cols-[0.8fr_1fr_1fr_1.25fr]" role="row">
+            <span role="columnheader" />
+            <span role="columnheader" className="px-5 pb-4 font-sans text-sm font-semibold text-black/50">
+              Doing it yourself
+            </span>
+            <span role="columnheader" className="px-5 pb-4 font-sans text-sm font-semibold text-black/50">
+              A typical provider
+            </span>
+            <span role="columnheader" className="rounded-t-lg bg-[#0c0d10] px-6 pb-4 pt-5 font-sans text-base font-bold text-brand-green">
+              Modern4labs
+            </span>
+          </div>
+          {COMPARE.map((r, i) => (
+            <div key={r.row} role="row" className="cmp-row grid grid-cols-[0.8fr_1fr_1fr_1.25fr]">
+              <span role="rowheader" className="border-t border-black/10 py-5 pr-4 font-sans text-sm font-bold">
+                {r.row}
+              </span>
+              <span role="cell" className="border-t border-black/10 px-5 py-5 font-sans text-sm leading-relaxed text-black/50">
+                {r.diy}
+              </span>
+              <span role="cell" className="border-t border-black/10 px-5 py-5 font-sans text-sm leading-relaxed text-black/50">
+                {r.typical}
+              </span>
+              <span
+                role="cell"
+                className={`flex items-start gap-3 border-t border-white/10 bg-[#0c0d10] px-6 py-5 font-sans text-[15px] font-semibold leading-relaxed text-white ${
+                  i === COMPARE.length - 1 ? "rounded-b-lg" : ""
+                }`}
+              >
+                <Check className="mt-1 text-brand-green" />
+                {r.us}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile list */}
+        <div className="cmp-table space-y-3 md:hidden">
+          {COMPARE.map((r) => (
+            <div key={r.row} className="cmp-row rounded-lg bg-white p-5">
+              <p className="font-sans text-xs font-semibold text-black/45">{r.row}</p>
+              <p className="mt-2 flex items-start gap-2.5 font-sans text-base font-bold leading-snug">
+                <Check className="mt-1 text-[#1a9b2b]" />
+                {r.us}
+              </p>
+              <p className="mt-3 border-t border-black/10 pt-3 font-sans text-xs leading-relaxed text-black/45">
+                Instead of: {r.diy.toLowerCase()}, or {r.typical.toLowerCase()}.
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className={`max-w-md text-black/60 ${TYPE.small} sm:text-base`}>See what this looks like for your business in a free 20-minute call.</p>
+          <Link href={AUDIT_HREF} className={`${BTN.base} ${BTN.dark}`}>
+            Book a free audit <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- The Numbers: why creativity matters ---------- */
+function TheNumbers() {
+  const ref = useRef<HTMLElement>(null);
+  const INK = "#0d3b1e";
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+
+      ref.current?.querySelectorAll<HTMLElement>("[data-count]").forEach((el) => {
+        const end = Number(el.dataset.count);
+        const dec = Number(el.dataset.decimals ?? 0);
+        const o = { v: 0 };
+        el.textContent = (0).toFixed(dec);
+        gsap.to(o, {
+          v: end,
+          duration: 1.6,
+          ease: "power2.out",
+          onUpdate: () => {
+            el.textContent = o.v.toFixed(dec);
+          },
+          scrollTrigger: { trigger: el, start: "top 88%" },
+        });
+      });
+
+      gsap.from(".num-card", {
+        y: 30,
+        autoAlpha: 0,
+        stagger: 0.1,
+        duration: 0.8,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ".num-grid", start: "top 80%" },
+      });
+    },
+    { scope: ref }
+  );
+
+  return (
+    <section ref={ref} className={`relative w-full ${L.gutter} py-16 sm:py-24`}>
+      <div className={`${L.container} rounded-xl bg-[#0d3b1e] px-5 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20`}>
+        <p className={`mb-6 text-[#4ade80] ${T.label}`}>Why creativity matters</p>
+        <h2 className={`max-w-4xl text-white ${TYPE.statement}`}>Creativity turns attention into opportunity.</h2>
+        <p className={`mt-6 max-w-xl text-white/70 ${TYPE.body}`}>Your customers are already online. The question is whether they stop for you.</p>
+
+        <div className="num-grid mt-14 grid gap-3 sm:mt-20 sm:gap-4 lg:grid-cols-3">
+          {STATS.map((s) => (
+            <div key={s.label} className="num-card flex flex-col rounded-lg bg-white p-6 sm:p-8" style={{ color: INK }}>
+              <p className="font-sans text-[clamp(3.5rem,7vw,5.5rem)] font-bold leading-none tracking-[-0.05em] tabular-nums">
+                {s.prefix}
+                <span data-count={s.value} data-decimals={s.decimals}>
+                  {s.value.toFixed(s.decimals)}
+                </span>
+                {s.suffix}
+              </p>
+              <p className="mt-3 font-sans text-base leading-snug opacity-75">{s.label}</p>
+              <p className="mt-8 border-t border-[#0d3b1e]/15 pt-5 font-sans text-lg font-bold leading-snug tracking-[-0.01em]">{s.point}</p>
+              <p className="mt-auto pt-6 font-sans text-[11px] opacity-50">Source: {s.source}</p>
+            </div>
+          ))}
+        </div>
+
+        {RESULTS.length > 0 && (
+          <div className="mt-14 sm:mt-20">
+            <p className={`mb-6 text-[#4ade80] ${T.label}`}>Results from our work</p>
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+              {RESULTS.map((r) => (
+                <div key={r.label} className="rounded-lg border border-white/15 p-6">
+                  <p className="font-sans text-5xl font-bold tracking-[-0.04em] text-white">{r.value}</p>
+                  <p className="mt-2 font-sans text-sm text-white/70">{r.label}</p>
+                  <p className="mt-4 font-sans text-xs text-[#4ade80]">{r.client}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-14 grid gap-8 border-t border-white/15 pt-10 sm:mt-20 md:grid-cols-3">
+          {PILLARS.map((p) => (
+            <div key={p.word}>
+              <h3 className={`text-white ${TYPE.h3}`}>{p.word}</h3>
+              <p className="mt-2 font-sans text-base text-white/65">{p.line}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- How It Works ---------- */
+function HowItWorks() {
+  const ref = useRef<HTMLElement>(null);
+  const [reached, setReached] = useState(0);
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) {
+        setReached(STEPS.length);
+        return;
+      }
+      const st = { trigger: ".hiw-track", start: "top 75%", end: "bottom 50%", scrub: 0.6 };
+      gsap.fromTo(
+        ".hiw-fill",
+        { scaleX: 0 },
+        { scaleX: 1, ease: "none", scrollTrigger: { ...st, onUpdate: (self) => setReached(Math.ceil(self.progress * STEPS.length)) } }
+      );
+      gsap.fromTo(".hiw-fill-v", { scaleY: 0 }, { scaleY: 1, ease: "none", scrollTrigger: st });
+    },
+    { scope: ref }
+  );
+
+  return (
+    <section ref={ref} className={`relative w-full ${L.gutter} py-24 sm:py-32`}>
+      <div className={L.container}>
+        <div className="mb-14 flex flex-col justify-between gap-6 sm:mb-20 md:flex-row md:items-end">
+          <div className="max-w-2xl">
+            <p className={`mb-4 ${TYPE.label}`}>How it works</p>
+            <h2 className={`text-white ${TYPE.h2}`}>From first call to first campaign.</h2>
+          </div>
+          <p className={`max-w-[280px] text-white/60 md:text-right ${TYPE.small} sm:text-base`}>Step one is free and takes 20 minutes.</p>
+        </div>
+
+        <ol className="hiw-track relative grid gap-10 pl-10 md:grid-cols-4 md:gap-6 md:pl-0 md:pt-14">
+          <span className="absolute left-0 right-0 top-[22px] hidden h-px bg-white/10 md:block">
+            <span className="hiw-fill block h-full origin-left bg-brand-green" />
+          </span>
+          <span className="absolute bottom-0 left-[15px] top-0 w-px bg-white/10 md:hidden">
+            <span className="hiw-fill-v block h-full w-full origin-top bg-brand-green" />
+          </span>
+
+          {STEPS.map((s, i) => {
+            const lit = reached > i;
+            return (
+              <li key={s.num} className="relative">
+                <span
+                  className={`absolute -left-10 top-0 grid h-8 w-8 place-items-center rounded-full border font-sans text-xs font-bold transition-colors duration-500 md:-top-14 md:left-0 md:h-11 md:w-11 ${
+                    lit ? "border-brand-green bg-brand-green text-black" : "border-white/15 bg-[#101216] text-white/50"
+                  }`}
+                >
+                  {s.num}
+                </span>
+                <h3 className={`font-sans text-xl font-bold tracking-[-0.02em] transition-colors duration-500 ${lit ? "text-white" : "text-white/45"}`}>{s.title}</h3>
+                <p className={`mt-2 max-w-xs font-sans text-sm leading-relaxed transition-colors duration-500 ${lit ? "text-white/65" : "text-white/35"}`}>{s.desc}</p>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Final CTA ---------- */
+function FinalCta() {
+  const ref = useRef<HTMLElement>(null);
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.fromTo(
+        ".fc-word",
+        { opacity: 0.15 },
+        {
+          opacity: 1,
+          stagger: 0.05,
+          ease: "none",
+          scrollTrigger: { trigger: ref.current, start: "top 75%", end: "center center", scrub: true },
+        }
+      );
+    },
+    { scope: ref }
+  );
+
+  const line1 = "Don't just show up online.";
+  const line2 = "Give people a reason to remember you.";
+
+  return (
+    <section ref={ref} className={`flex flex-col items-center justify-center text-center ${L.gutter} py-28 sm:py-40`}>
+      <h2 className={`mx-auto max-w-5xl ${TYPE.statement}`}>
+        <span className="block text-white/40">
+          {line1.split(" ").map((w, i) => (
+            <span key={i} className="fc-word inline-block pr-[0.22em]">
+              {w}
+            </span>
+          ))}
+        </span>
+        <span className="mt-2 block text-white">
+          {line2.split(" ").map((w, i) => (
+            <span key={i} className="fc-word inline-block pr-[0.22em]">
+              {w}
+            </span>
+          ))}
+        </span>
+      </h2>
+      <div className="mt-12 flex flex-col items-center gap-4 sm:mt-16">
+        <GlowButton href={AUDIT_HREF} className={`${L.button} ${T.button}`}>
+          Book a free audit <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+        </GlowButton>
+        <p className="font-sans text-sm text-white/50">Free, 20 minutes, on your page, ads and follow-ups.</p>
+      </div>
+    </section>
   );
 }
