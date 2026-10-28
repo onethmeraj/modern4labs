@@ -14,12 +14,20 @@
   --color-page: #0c0d10;
   --color-panel: #101216;
 
-  /* Fonts wired from next/font in layout.tsx */
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-serif), ui-serif, Georgia, serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+  /* Fonts wired from next/font in layout.tsx.
+     The next/font variables use different names (--font-inter etc.) on purpose:
+     "--font-sans: var(--font-sans)" is a circular reference and silently breaks. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), ui-serif, Georgia, serif;
+
+  /* Older components (nav, footer, buttons, other routes) still use `font-mono`.
+     Pointing it at the sans stack makes every page match the new type
+     without touching those files. Use `font-code` for real code snippets. */
+  --font-mono: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-code: ui-monospace, "SFMono-Regular", "Menlo", monospace;
 }
-z
+
 /* --------------------------------------------------------------------------
    Base
    -------------------------------------------------------------------------- */
@@ -43,6 +51,17 @@ body {
 
 /* Horizontal-scroll sections must use overflow-x-clip, never hidden —
    hidden creates a scroll container and silently breaks position: sticky. */
+
+/* Inside @layer base so utility classes (e.g. font-serif on the hero) can override it.
+   Unlayered rules beat every Tailwind utility, which is what broke the hero font. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
+  }
+}
 
 ::selection {
   background: var(--color-brand-green);

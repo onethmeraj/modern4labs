@@ -6,10 +6,11 @@
    so /start and /contact feel like the same brand as the homepage.
    ========================================================================== */
 
-import { useRef, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { useLenis } from "lenis/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -84,34 +85,163 @@ const NAV_LINKS = [
   { href: "/start", label: "Packages" },
   { href: "/contact", label: "Contact" },
 ];
+
+/**
+ * Scroll-aware nav:
+ * - Over the hero: transparent with a dark fade, so the video stays clean.
+ * - After 40px: a dark frosted bar with a hairline border, readable over any section.
+ * - Scrolling down hides it; any scroll up brings it straight back.
+ * - Mobile: full-screen menu, page frozen while open.
+ */
 export function SiteNav() {
+  const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const lenis = useLenis();
+
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 40);
+      if (y > 240 && y > last + 4) setHidden(true);
+      else if (y < last - 4 || y <= 240) setHidden(false);
+      last = y;
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    lenis?.stop();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      lenis?.start();
+    };
+  }, [menuOpen, lenis]);
+
+  const solid = scrolled || menuOpen;
+
   return (
-    <nav className={`fixed top-0 z-50 flex w-full items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent py-3 sm:py-4 ${L.gutter}`}>
-      <Link href="/" className="relative h-6 w-28 shrink-0 sm:h-8 sm:w-36">
-        <Image
-          src="/logo-text.png"
-          alt="Modern4labs"
-          fill
-          priority
-          sizes="150px"
-          className="object-contain object-left"
-        />
-      </Link>
+    <>
+      <header
+        className={`fixed inset-x-0 top-0 z-[60] border-b transition-[transform,background-color,border-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          hidden && !menuOpen ? "-translate-y-full" : "translate-y-0"
+        } ${
+          solid
+            ? "border-white/[0.08] bg-[#0c0d10]/80 backdrop-blur-xl backdrop-saturate-150"
+            : "border-transparent bg-gradient-to-b from-black/80 via-black/40 to-transparent"
+        }`}
+      >
+        {/* Inner row uses the same container as the page sections,
+            so the logo lines up with every section's left edge. */}
+        <div className={L.gutter}>
+        <nav
+          aria-label="Main"
+          className={`${L.container} flex items-center justify-between transition-[height] duration-500 ${solid ? "h-16" : "h-[72px] sm:h-20"}`}
+        >
+          <Link
+            href="/"
+            aria-label="modern4labs.io home"
+            className="flex shrink-0 items-center rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green"
+          >
+            {/* Wordmark is 1377×201 (≈6.85:1). Height drives size, width follows. */}
+            <Image
+              src="/logo-wordmark.png"
+              alt="modern4labs.io"
+              width={1377}
+              height={201}
+              priority
+              sizes="(max-width: 640px) 150px, 190px"
+              className={`w-auto transition-[height] duration-500 ${solid ? "h-[20px] sm:h-[23px]" : "h-[22px] sm:h-[27px]"}`}
+            />
+          </Link>
 
-      <div className="flex items-center gap-6 sm:gap-8">
-        <div className="hidden items-center gap-7 lg:flex">
-          {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className={`transition-colors duration-300 hover:text-white ${T.label}`}>
-              {link.label}
-            </Link>
-          ))}
+          <div className="flex items-center gap-3 sm:gap-5">
+            <ul className="hidden items-center gap-1 lg:flex">
+              {NAV_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="rounded-full px-4 py-2 font-sans text-sm font-medium text-white/75 transition-colors duration-300 hover:bg-white/[0.06] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-green"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block">
+              <GlowButton href="/start" className="px-5 py-2.5 sm:px-6">
+                Start a project
+              </GlowButton>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-green lg:hidden"
+            >
+              <span className="relative block h-3 w-4">
+                <span className={`absolute left-0 h-[1.5px] w-full bg-white transition-all duration-300 ${menuOpen ? "top-1/2 -translate-y-1/2 rotate-45" : "top-0"}`} />
+                <span className={`absolute left-0 h-[1.5px] w-full bg-white transition-all duration-300 ${menuOpen ? "top-1/2 -translate-y-1/2 -rotate-45" : "bottom-0"}`} />
+              </span>
+            </button>
+          </div>
+        </nav>
         </div>
+      </header>
 
-        <GlowButton href="/start" className="px-4 py-2 sm:px-6 sm:py-2.5">
-          Start a project
-        </GlowButton>
-      </div>
-    </nav>
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            id="mobile-menu"
+            data-lenis-prevent
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className={`fixed inset-0 z-[59] flex flex-col bg-[#0c0d10]/95 pb-10 pt-24 backdrop-blur-xl lg:hidden ${L.gutter}`}
+          >
+            <ul className="flex flex-col">
+              {NAV_LINKS.map((link, i) => (
+                <motion.li
+                  key={link.href}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.05 + i * 0.05, duration: 0.4, ease: EASE }}
+                  className="border-b border-white/[0.08]"
+                >
+                  <Link
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="block py-5 font-display text-3xl font-semibold tracking-[-0.03em] text-white"
+                  >
+                    {link.label}
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
+            <Link
+              href="/start"
+              onClick={() => setMenuOpen(false)}
+              className="mt-auto inline-flex justify-center rounded-full bg-brand-green px-6 py-4 font-sans text-base font-semibold text-black"
+            >
+              Start a project
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -391,7 +521,7 @@ export function PageHeader({
 
 export function ArrowRight({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg
+    <svg    
       width={size}
       height={size}
       viewBox="0 0 24 24"

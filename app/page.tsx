@@ -3,22 +3,21 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type MouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
-import { AnimatePresence, MotionConfig, motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useLenis } from "lenis/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import DottedMap from "dotted-map";
 
 /* Unified Design System Imports */
-import { ArrowRight, EASE, GlowButton, L, S, SiteFooter, SiteNav, T, stagger } from "./components/system";
+import { ArrowRight, EASE, GlowButton, L, S, SiteFooter, SiteNav } from "./components/system";
 import WelcomeScreen from "./components/WelcomeScreen";
 import SoundToggle from "./components/SoundToggle";
 import ScrambleText from "./components/ScrambleText";
@@ -28,85 +27,47 @@ if (typeof window !== "undefined") {
 }
 
 /* ========================================================================== */
-/* 0. TYPE + UI SYSTEM — one place for sizes so every section matches          */
+/* 0. TYPE + UI SYSTEM — Inter Tight headings, Inter body                     */
 /* ========================================================================== */
 
 const TYPE = {
-  /* hero headline — uses the studio display font */
-  display: T.display,
-  /* big statements and section headlines — studio heading font */
-  statement: T.h2,
-  h2: T.h2,
-  /* card / row title */
-  h3: "font-sans font-bold leading-tight tracking-[-0.03em] text-[clamp(1.375rem,2.4vw,2rem)]",
-  /* supporting text */
-  body: "font-sans text-base leading-relaxed sm:text-lg",
+  display: "font-display font-semibold leading-[1.02] tracking-[-0.045em] text-[clamp(2.5rem,6vw,5.25rem)]",
+  statement: "font-display font-semibold leading-[1.04] tracking-[-0.04em] text-[clamp(2.1rem,4.6vw,4rem)]",
+  h2: "font-display font-semibold leading-[1.06] tracking-[-0.035em] text-[clamp(1.85rem,3.4vw,3rem)]",
+  h3: "font-display font-medium leading-snug tracking-[-0.02em] text-[clamp(1.15rem,1.8vw,1.5rem)]",
+  body: "font-sans text-base leading-relaxed sm:text-[17px]",
   small: "font-sans text-sm leading-relaxed",
-  /* small label above a headline — studio label font */
-  label: `text-brand-green ${T.label}`,
+  label: "font-sans font-medium text-brand-green text-[13px] tracking-[0.01em]",
 };
 
 const BTN = {
-  base: "inline-flex items-center justify-center gap-2 rounded-md px-6 py-3.5 font-sans text-sm font-bold transition-transform duration-300 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green",
+  base: "inline-flex items-center justify-center gap-2 rounded-md px-6 py-3.5 font-sans text-sm font-semibold transition-transform duration-300 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green",
   green: "bg-brand-green text-black",
   white: "bg-white text-black",
-  dark: "bg-[#0c0d10] text-white",
+  dark: "bg-[#0c0d10] border border-white/20 text-white hover:border-white/50",
+  whatsapp: "bg-[#25D366] text-black",
 };
 
 const AUDIT_HREF = "/contact?service=audit";
+const CALENDLY_URL = "https://calendly.com/emadushka801/modern4labs";
+const WHATSAPP_HREF = "https://wa.me/YOUR_NUMBER_HERE";
 
 const HERO_KICKER = "Modern4Labs — Digital Studio";
 const ROTATING_WORDS = ["Leads.", "Growth.", "Vision.", "Scale."] as const;
 
 /* ========================================================================== */
-/* 1. CONTENT — edit words here                                                */
+/* 1. CONTENT CONFIGURATION                                                   */
 /* ========================================================================== */
 
-const PROBLEMS = [
-  { title: "Posting isn't marketing.", desc: "A full feed doesn't mean anyone is paying attention." },
-  { title: "Ordinary gets scrolled past.", desc: "Content that looks like everyone else's is invisible." },
-  { title: "Attention needs a next step.", desc: "Views mean nothing if nobody messages, books or buys." },
-];
-
-/* ---- Map locations: to add a city, add one entry here (lat/lng + time zone) ---- */
-type Hub = {
-  id: string;
-  city: string;
-  country: string;
-  lat: number;
-  lng: number;
-  tz: string;
-  role: string;
-  clients: string[];
-  hq?: boolean;
-};
-
-const HUBS: Hub[] = [
-  { id: "colombo", city: "Colombo", country: "Sri Lanka", lat: 6.9271, lng: 79.8612, tz: "Asia/Colombo", role: "Studio HQ", clients: ["Seafarer Store", "The Search Bar"], hq: true },
-  { id: "stockholm", city: "Stockholm", country: "Sweden", lat: 59.3293, lng: 18.0686, tz: "Europe/Stockholm", role: "Nordic expansion", clients: ["The Search Bar"] },
-  { id: "melbourne", city: "Melbourne", country: "Australia", lat: -37.8136, lng: 144.9631, tz: "Australia/Melbourne", role: "High-ticket funnels", clients: ["Sunblock Property"] },
-];
-
-/* ---- Client logos: one entry per client. Put logo files in /public/clients ---- */
+/* Logos are white, transparent PNGs so they sit evenly on the dark tiles.
+   `box` sizes each one optically: wide wordmarks get less height, the square FoldFox mark more. */
 const CLIENTS = [
-  { name: "The Search Bar", logo: "/clients/logo-2.png" },
-  { name: "Sunblock Property", logo: "/clients/logo-3.png" },
-  { name: "Seafarer Store", logo: "/clients/logo-4.png" },
-  { name: "Foldfox", logo: "/clients/logo-1.png" },
+  { name: "The Search Bar", logo: "/clients/searchbarlogo.png", box: "h-12 w-[78%] sm:h-14" },
+  { name: "Sunblock Property", logo: "/clients/sunblocklogo.png", box: "h-11 w-[82%] sm:h-12" },
+  { name: "Seafarer Store", logo: "/clients/seafarerlogo.png", box: "h-12 w-[74%] sm:h-14" },
+  { name: "FoldFox", logo: "/clients/foldfoxlogo.png", box: "h-20 w-[50%] sm:h-24" },
 ];
 
-const PROJECT_IMAGES = [
-  "/works/project-0.png",
-  "/works/project-1.jpeg",
-  "/works/project-2.png",
-  "/works/project-3.jpeg",
-  "/works/project-4.png",
-  "/works/project-5.jpeg",
-  "/works/project-6.jpeg",
-];
-
-/* ---- Services. Only list a client under "proof" if you did that work for them ---- */
-type ServicePreview = "video" | "ads" | "page" | "chat";
 
 const SERVICES: {
   id: string;
@@ -116,138 +77,269 @@ const SERVICES: {
   tags: string[];
   monthly: string;
   proof?: string;
-  preview: ServicePreview;
 }[] = [
   {
     id: "short-form-video",
     num: "001",
     title: "Short-form video",
     promise: "Reels and ads that stop the scroll and say something.",
-    tags: ["Content ideas", "Scriptwriting", "Editing", "Hooks & captions"],
+    tags: ["Content ideas", "Scriptwriting", "Editing", "Hooks"],
     monthly: "A planned calendar of scripted, edited reels, ready to post.",
     proof: "Seafarer Store",
-    preview: "video",
   },
   {
     id: "paid-ads",
     num: "002",
     title: "Paid ads",
-    promise: "Meta campaigns set up, tested and managed, so your budget goes to what works.",
-    tags: ["Campaign setup", "Creative testing", "Retargeting", "Monthly reporting"],
-    monthly: "Campaigns checked and adjusted every week, with a clear report every month.",
+    promise: "Meta campaigns set up, tested and managed for ROI.",
+    tags: ["Campaign setup", "Creative testing", "Retargeting"],
+    monthly: "Campaigns checked and adjusted every week, with a clear monthly report.",
     proof: "Sunblock Property",
-    preview: "ads",
   },
   {
-    id: "landing-pages",
+    id: "websites-tracking",
     num: "003",
-    title: "Landing pages",
-    promise: "Fast, focused pages that turn clicks into bookings.",
-    tags: ["Page design", "Build", "Copywriting", "Lead forms"],
-    monthly: "One page with one job, built and tested before it goes live.",
+    title: "Websites & tracking",
+    promise: "Websites, e-commerce stores and landing pages built to turn clicks into bookings and sales.",
+    tags: ["Websites", "E-commerce", "Landing pages", "Meta Pixel & Conversions API", "Google Analytics 4", "Lead forms"],
+    monthly: "Every site we build is wired for tracking from day one. You see who visited, what they clicked and which ad or post brought them in, so you stop guessing and spend on what works.",
     proof: "The Search Bar",
-    preview: "page",
   },
   {
     id: "automation-crm",
     num: "004",
-    title: "Automation & CRM",
-    promise: "WhatsApp and email follow-ups, so no lead goes cold.",
-    tags: ["GoHighLevel", "WhatsApp flows", "Email follow-ups", "Lead pipelines"],
-    monthly: "Every new lead gets a reply in minutes, even when you are busy.",
-    preview: "chat",
+    title: "CRM & automation",
+    promise: "Every lead lands in a GoHighLevel CRM and gets a reply in minutes, even when you are busy.",
+    tags: ["GoHighLevel CRM", "Lead pipelines", "WhatsApp flows", "Email & SMS follow-ups", "Booking reminders"],
+    monthly: "You see each lead's journey in one place, from the first ad click to the booked call, and automated follow-ups make sure nobody goes cold.",
   },
+  {
+    id: "cloud-infrastructure",
+    num: "005",
+    title: "Cloud Infrastructure",
+    promise: "Lightning-fast, highly secure cloud hosting and deployment.",
+    tags: ["AWS / Vercel", "Performance Tuning", "Security", "Uptime"],
+    monthly: "Enterprise-grade hosting with continuous monitoring, daily backups, and global scaling.",
+  },
+];
+
+/* --------------------------------------------------------------------------
+   PROJECTS — one entry per file in /public/works (there is no project-4).
+   -------------------------------------------------------------------------- */
+type Project = {
+  id: string;
+  image: string;
+  category: string;
+  title: string;
+  summary: string;
+  services: string[];
+};
+
+const PROJECTS: Project[] = [
+  {
+    id: "searchbar-production",
+    image: "/works/project-0.png",
+    category: "Video production",
+    title: "The Search Bar production",
+    summary: "End-to-end video production for The Search Bar, a learning platform for teachers. We planned the shoots, filmed on set and handled the edit, so the brand had a steady flow of ready-to-post content.",
+    services: ["Pre-production", "Filming", "Editing", "Social cut-downs"],
+  },
+  {
+    id: "automotive-branding",
+    image: "/works/project-1.jpeg",
+    category: "Branding",
+    title: "Branding for the automotive industry",
+    summary: "On-location shoots at showrooms and launch events, capturing vehicles, people and the atmosphere of the day. Built into brand content and short-form videos that make the dealership feel premium and busy.",
+    services: ["Event coverage", "Gimbal filming", "Brand content", "Reels"],
+  },
+  {
+    id: "product-personal-branding",
+    image: "/works/project-2.png",
+    category: "Product & personal brand",
+    title: "Product and personal branding shoots",
+    summary: "Shoots that put the product and the founder side by side, so customers see both what they are buying and who stands behind it. Lit, framed and scripted for social first.",
+    services: ["Shoot planning", "Product filming", "Talking-head video", "Editing"],
+  },
+  {
+    id: "podcast-shoots",
+    image: "/works/project-3.jpeg",
+    category: "Podcast",
+    title: "Single-guest social media podcasts",
+    summary: "One-on-one podcast sessions recorded for social media. One sitting is cut into many short clips with strong hooks, so a single shoot feeds weeks of posts.",
+    services: ["Multi-camera setup", "Audio", "Clip editing", "Captions"],
+  },
+  {
+    id: "tutor-personal-branding",
+    image: "/works/project-5.png",
+    category: "Personal brand",
+    title: "Personal branding for tutors and niche experts",
+    summary: "Personal brands for tutors and niche specialists. We find the angle that makes them the obvious choice, write the scripts and film content that builds trust with students and parents.",
+    services: ["Positioning", "Scripting", "Filming", "Editing"],
+  },
+  {
+    id: "studio-setup",
+    image: "/works/project-6.jpeg",
+    category: "Studio & videography",
+    title: "Studio setup and detail-focused videography",
+    summary: "Studio builds with lighting, framing and backdrops planned for video, plus videography that focuses on the details: textures, close-ups and clean movement that make footage look high-end.",
+    services: ["Studio design", "Lighting", "Videography", "Colour"],
+  },
+];
+
+const RESULTS = [
+  { value: "+45%", label: "Increase in qualified leads", client: "Sunblock Property" },
+  { value: "3.2x", label: "Return on ad spend", client: "The Search Bar" },
+  { value: "975K+", label: "Revenue generated for clients", client: "Across client campaigns" },
 ];
 
 const STEPS = [
   { num: "01", title: "Free audit call", desc: "20 minutes on your page, your ads and where leads are slipping away." },
   { num: "02", title: "Clear plan", desc: "What we will make, run and measure, with a fixed quote." },
-  { num: "03", title: "Create and launch", desc: "Content, ads and pages go live. You approve everything first." },
-  { num: "04", title: "Report and scale", desc: "Monthly numbers, honest notes and more of what works." },
+  { num: "03", title: "Create & launch", desc: "Content, ads and pages go live. You approve everything first." },
+  { num: "04", title: "Scale", desc: "Monthly numbers, honest notes and more of what works." },
 ];
 
-/* ---- Comparison: answers "why not do it myself or hire anyone?" ---- */
-const COMPARE = [
-  { row: "Ideas", diy: "Whatever you have time for", typical: "Trends and templates, copied", us: "Original ideas built around your brand" },
-  { row: "Content", diy: "Phone videos when you can", typical: "Posts made to fill a calendar", us: "Every post made to get a message, booking or sale" },
-  { row: "Strategy", diy: "Guesswork", typical: "Rarely part of the deal", us: "A clear plan before anything is made" },
-  { row: "Ads, pages, follow-up", diy: "Separate tools, separate headaches", typical: "A different company for each", us: "One team for video, ads, pages and automation" },
-  { row: "Price", diy: "Your time, which is never free", typical: "Extras you find out about later", us: "Fixed packages, price known upfront" },
-  { row: "Reporting", diy: "Hard to tell what's working", typical: "Likes and reach", us: "Monthly numbers tied to enquiries" },
+/* Add portraits to /public/team (e.g. /team/eshan.jpg) and set `photo`.
+   Without a photo the card shows initials. */
+type Member = {
+  name: string;
+  title: string; // short title under the portrait
+  role: string; // full role in the panel
+  qualification: string;
+  experience: string;
+  bio: string;
+  focus: string[];
+  photo?: string;
+};
+
+const TEAM: Member[] = [
+  {
+    name: "Eshan Madushanka",
+    title: "Creative Director",
+    role: "Co-Founder, Creative Director & Content Strategist",
+    qualification: "BBA (Hons) in Marketing Management",
+    experience: "5+ years",
+    bio: "Leads creative direction, video editing, content production and social media strategy. Focused on compelling creative concepts, strong brand identities and content strategies that drive audience engagement and brand growth.",
+    focus: ["Creative direction", "Video editing", "Content production", "Social media strategy", "Brand identity"],
+  },
+  {
+    name: "Oneth Meraj",
+    title: "Technology & Growth",
+    role: "Co-Founder, Technology & Growth Strategist",
+    qualification: "BSc (Hons) in Software Engineering",
+    experience: "4+ years",
+    bio: "Full-stack engineer and tech lead specialising in technology development, backend systems, AI-driven solutions and business growth strategy. Focused on building scalable digital solutions that drive business growth.",
+    focus: ["Full-stack development", "Backend systems", "AI solutions", "Growth strategy", "Client management"],
+  },
+  {
+    name: "Riftha",
+    title: "Head of Operations",
+    role: "Head of Operations",
+    qualification: "BBA (Hons) in Marketing Management",
+    experience: "4+ years",
+    bio: "Runs day-to-day operations, team coordination, workflow management and project delivery, making sure every project is executed smoothly from start to finish.",
+    focus: ["Operations", "Team coordination", "Workflow management", "Project delivery"],
+  },
 ];
 
-/* ---- Statistics: every number has a public source. Do not add numbers without one ---- */
-const STATS = [
-  {
-    value: 9,
-    decimals: 0,
-    prefix: "",
-    suffix: "M",
-    label: "social media users in Sri Lanka",
-    point: "Your customers are already scrolling.",
-    source: "DataReportal, Digital 2026 (Oct 2025)",
-  },
-  {
-    value: 21.6,
-    decimals: 1,
-    prefix: "+",
-    suffix: "%",
-    label: "growth in Instagram's ad reach in Sri Lanka in one year",
-    point: "The audience is growing. Standing out matters more every month.",
-    source: "Meta ad tools via DataReportal (Oct 2024 to Oct 2025)",
-  },
-  {
-    value: 47,
-    decimals: 0,
-    prefix: "",
-    suffix: "%",
-    label: "of the sales lift from advertising comes from the creative itself",
-    point: "Budget gets you seen. Creative gets you chosen.",
-    source: "Nielsen & NCSolutions",
-  },
+const TOOLS = ["Meta Ads", "Meta Pixel & CAPI", "Google Analytics 4", "GoHighLevel CRM", "WhatsApp Business", "Next.js", "Vercel", "AWS"];
+
+const REVIEWS = [
+  { text: "They completely transformed our lead generation pipeline. Highly recommended.", author: "Sarah J.", role: "CEO, TechFlow" },
+  { text: "Professional, fast, and the automation alone saved us 20 hours a week.", author: "Elena R.", role: "Ops Director" },
+  { text: "Our ad spend is finally generating real, measurable appointments.", author: "Mark T.", role: "Founder, Apex" },
 ];
 
-/* ---- Your own results. Leave empty until you have real, checkable numbers.
-   Format: { value: "…", label: "…", client: "…" }. The block only shows when this has items. ---- */
-const RESULTS: { value: string; label: string; client: string }[] = [];
-
-const PILLARS = [
-  { word: "Visibility", line: "Get seen by the right people." },
-  { word: "Virality", line: "Give people a reason to share." },
-  { word: "Credibility", line: "Look like the obvious choice." },
+/* Review the answers so they match how you actually work before going live. */
+const FAQS = [
+  { q: "How soon will I see results?", a: "Most campaigns go live within 14 days. You'll see early numbers in the first couple of weeks, and by day 30 we know what's working and double down on it." },
+  { q: "How much does it cost?", a: "We work on fixed monthly packages, so you know the price before we start. Ad budget is separate and is paid straight to Meta from your own account." },
+  { q: "Can I start with just one service?", a: "Yes. Plenty of clients start with reels or a landing page, then add ads or automation once the first piece is working." },
+  { q: "Do I need to be on camera?", a: "Not always, but it helps. Faces build trust faster. If you're camera-shy, we write the script, keep the shoot short and do the heavy lifting in the edit." },
+  { q: "Who owns the ad account and the content?", a: "You do. Ads run from your account, the budget stays in your control, and every video and page we make is yours to keep." },
+  { q: "Will I know where my leads come from?", a: "Yes. We set up Meta Pixel, Conversions API and Google Analytics on your site, and every lead goes into a GoHighLevel CRM. You can see which ad, post or page brought each person in." },
+  { q: "Will I approve things before they go live?", a: "Always. You see every script, edit and page before it's published. Nothing goes out without your yes." },
+  { q: "Do you work with businesses outside Sri Lanka?", a: "Yes. We work with brands in Sri Lanka and Australia, and we're set up to work remotely with anyone." },
+  { q: "What happens on the free audit call?", a: "20 minutes. We look at your page, your ads and where leads are dropping off, then tell you what we'd fix first. No pressure to sign anything." },
 ];
 
 /* ========================================================================== */
-/* 2. MOTION HELPERS                                                           */
+/* 2. MOTION UTILITIES                                                        */
 /* ========================================================================== */
 
-const PRIORITY = { hero: 3 };
+const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const isFinePointer = () => typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-const NOISE_URL = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`;
+/* Calendly popup. The script loads on first hover/focus, so it never slows the page.
+   If it fails to load, the link simply opens Calendly in a new tab. */
+declare global {
+  interface Window { Calendly?: { initPopupWidget: (o: { url: string }) => void } }
+}
+
+let calendlyLoading: Promise<void> | null = null;
+function loadCalendly() {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.Calendly) return Promise.resolve();
+  if (calendlyLoading) return calendlyLoading;
+  calendlyLoading = new Promise<void>((resolve, reject) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://assets.calendly.com/assets/external/widget.css";
+    document.head.appendChild(css);
+    const js = document.createElement("script");
+    js.src = "https://assets.calendly.com/assets/external/widget.js";
+    js.async = true;
+    js.onload = () => resolve();
+    js.onerror = () => { calendlyLoading = null; reject(); };
+    document.body.appendChild(js);
+  });
+  return calendlyLoading;
+}
+
+function BookCallButton({ className, children }: { className: string; children: React.ReactNode }) {
+  const open = async (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try {
+      await loadCalendly();
+      window.Calendly?.initPopupWidget({ url: `${CALENDLY_URL}?hide_gdpr_banner=1` });
+    } catch {
+      window.open(CALENDLY_URL, "_blank", "noopener,noreferrer");
+    }
+  };
+  return (
+    <a
+      href={CALENDLY_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={open}
+      onMouseEnter={() => { void loadCalendly().catch(() => {}); }}
+      onFocus={() => { void loadCalendly().catch(() => {}); }}
+      className={className}
+    >
+      {children}
+    </a>
+  );
+}
 
 const lineMask = {
   hidden: { y: "110%" },
   show: { y: "0%", transition: { duration: 1.4, ease: EASE } },
 };
 
-const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const isFinePointer = () => typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-
 /* ========================================================================== */
-/* 3. PAGE ASSEMBLY                                                            */
+/* 3. PAGE ASSEMBLY                                                           */
 /* ========================================================================== */
 
 export default function Home() {
   const [entered, setEntered] = useState(false);
   const [ready, setReady] = useState(false);
-  const [checked, setChecked] = useState(false); // have we read sessionStorage yet?
+  const [checked, setChecked] = useState(false);
   const lenis = useLenis();
 
-  // Decide once, on mount, whether the welcome should play this session.
   useEffect(() => {
     if (sessionStorage.getItem("introSeen")) {
-      setEntered(true); // already seen this session — skip straight to the page
-      setReady(true); // skip path must also release the hero animation
+      setEntered(true);
+      setReady(true);
     }
     setChecked(true);
   }, []);
@@ -259,16 +351,13 @@ export default function Home() {
   }, [lenis, entered]);
 
   const handleExitComplete = useCallback(() => {
-    sessionStorage.setItem("introSeen", "true"); // remember for the rest of the session
-
+    sessionStorage.setItem("introSeen", "true");
     if (!lenis) {
       setReady(true);
       return;
     }
-
     lenis.start();
     lenis.scrollTo(0, { immediate: true });
-
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         lenis.resize();
@@ -276,8 +365,6 @@ export default function Home() {
         setReady(true);
       });
     });
-
-    document.fonts?.ready.then(() => ScrollTrigger.refresh());
   }, [lenis]);
 
   return (
@@ -290,45 +377,53 @@ export default function Home() {
         <SiteNav />
 
         {/* 1. Hero */}
-        <Hero start={ready} />
-
-        {/* 2. The problem + presence */}
-        <div className="relative z-20 -mt-[2px] w-full overflow-hidden bg-[#0c0d10]">
+        <div className="relative z-20 w-full overflow-hidden bg-[#0c0d10]">
           <ConstellationCanvas />
-          <Problem />
-          <div className="relative z-10 w-full border-t border-white/[0.06]">
-            <GlobalPresenceMap />
-            <ClientLogos />
-          </div>
+          <Hero start={ready} />
         </div>
 
-        {/* 3. Work */}
-        <div className="relative z-20 w-full border-t border-white/[0.04] bg-[#0c0d10]">
-          <Work />
+        {/* 2. Logo Strip */}
+        <div className="relative z-10 w-full border-t border-white/[0.06] bg-[#0c0d10]">
+          <ClientLogos />
         </div>
 
-        {/* 4. Services */}
-        <div className="relative z-10 w-full bg-[#0c0d10]">
+        {/* 3. Services */}
+        <div className="relative z-20 w-full bg-[#0c0d10]">
           <Services />
         </div>
 
-        {/* 5. Why us vs doing it yourself */}
-        <div className="relative z-10 w-full bg-[#0c0d10]">
-          <Compare />
+        {/* 4. Work & Results */}
+        <div className="relative z-10 w-full border-t border-white/[0.04] bg-[#0c0d10]">
+          <WorkAndResults />
         </div>
 
-        {/* 6. Why creativity matters (numbers) */}
-        <div className="relative z-10 w-full bg-[#0c0d10]">
-          <TheNumbers />
+        {/* 5. Proof band (replaces the single testimonial) */}
+        <div className="relative z-20 w-full border-y border-white/[0.06] bg-[#101216]">
+          <ProofBand />
         </div>
 
-        {/* 7. How it works */}
-        <div className="relative z-20 w-full bg-[#101216]">
+        {/* 6. How It Works */}
+        <div className="relative z-10 w-full bg-[#0c0d10]">
           <HowItWorks />
         </div>
 
-        {/* 8. Final CTA */}
-        <div className="relative z-20 w-full bg-[#0c0d10]">
+        {/* 7. Who We Are */}
+        <div className="relative z-20 w-full border-t border-white/[0.04] bg-[#0c0d10]">
+          <WhoWeAre />
+        </div>
+
+        {/* 8. Reviews */}
+        <div className="relative z-10 w-full border-t border-white/[0.04] bg-[#101216]">
+          <Reviews />
+        </div>
+
+        {/* 9. FAQ */}
+        <div className="relative z-20 w-full border-t border-white/[0.04] bg-[#0c0d10]">
+          <FAQ />
+        </div>
+
+        {/* 10. Final CTA */}
+        <div className="relative z-10 w-full border-t border-white/[0.04] bg-[#0c0d10]">
           <FinalCta />
           <SiteFooter />
         </div>
@@ -338,10 +433,9 @@ export default function Home() {
 }
 
 /* ========================================================================== */
-/* 4. SECTIONS                                                                 */
+/* 4. SECTIONS & COMPONENTS                                                   */
 /* ========================================================================== */
 
-/* ---------- Background particles ---------- */
 function ConstellationCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -406,7 +500,6 @@ function ConstellationCanvas() {
           }
         }
       }
-
       animationFrameId = requestAnimationFrame(draw);
     };
 
@@ -421,15 +514,10 @@ function ConstellationCanvas() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-60 mix-blend-screen"
-    />
+    <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-60 mix-blend-screen" />
   );
 }
 
-
-/* ---------- Hero ---------- */
 function Hero({ start }: { start: boolean }) {
   const containerRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -441,82 +529,47 @@ function Hero({ start }: { start: boolean }) {
     gsap.to(".hero-video", { x: x * -14, y: y * -10, duration: 1.8, ease: "power3.out" });
   }, []);
 
-  useGSAP(
-    () => {
-      if (!start || prefersReducedMotion()) return;
-
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: "top top",
-          end: () => `+=${window.innerHeight * 0.55}`,
-          scrub: 0.8,
-          pin: true,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-          refreshPriority: PRIORITY.hero,
-        },
-      });
-
-      tl.fromTo(".hero-video", { scale: 1.04 }, { scale: 1.35, ease: "none", duration: 1 }, 0)
-        .fromTo(".hero-video-wrapper", { opacity: 1 }, { opacity: 0, ease: "power2.inOut", duration: 1 }, 0)
-        .fromTo(
-          ".fg-content",
-          { autoAlpha: 1, y: 0, filter: "blur(0px)" },
-          { autoAlpha: 0, y: -40, filter: "blur(14px)", duration: 0.8, ease: "power2.in" },
-          0
-        );
-    },
-    { scope: containerRef, dependencies: [start], revertOnUpdate: true }
-  );
+  useGSAP(() => {
+    if (!start || prefersReducedMotion()) return;
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: containerRef.current,
+        start: "top top",
+        end: () => `+=${window.innerHeight * 0.55}`,
+        scrub: 0.8,
+        pin: true,
+      },
+    });
+    tl.fromTo(".hero-video", { scale: 1.04 }, { scale: 1.35, ease: "none", duration: 1 }, 0)
+      .fromTo(".hero-video-wrapper", { opacity: 1 }, { opacity: 0, ease: "power2.inOut", duration: 1 }, 0)
+      .fromTo(".fg-content", { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -40, duration: 0.8, ease: "power2.in" }, 0);
+  }, { scope: containerRef, dependencies: [start] });
 
   return (
-    <section
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className={`relative flex w-full items-center justify-center overflow-hidden bg-[#0c0d10] ${L.screen}`}
-    >
+    <section ref={containerRef} onMouseMove={handleMouseMove} className={`relative flex w-full items-center justify-center overflow-hidden bg-transparent ${L.screen}`}>
       <div className="hero-video-wrapper pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="hero-video h-[108%] w-[108%] -translate-x-[4%] -translate-y-[4%] object-cover [filter:brightness(0.5)_saturate(1)_contrast(1.05)] will-change-transform"
-        >
+        <video ref={videoRef} autoPlay loop muted playsInline className="hero-video h-[108%] w-[108%] -translate-x-[4%] -translate-y-[4%] object-cover [filter:brightness(0.5)_saturate(1)_contrast(1.05)]">
           <source src="/modern4labsintro.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/85 via-black/30 to-[#0c0d10]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.7)_100%)]" />
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-[1] opacity-[0.12] mix-blend-overlay" style={{ backgroundImage: NOISE_URL }} />
-
       <div className={`relative z-10 flex h-full w-full items-center justify-center ${L.gutter}`}>
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          animate={start ? "show" : "hidden"}
-          className="fg-content flex w-full flex-col items-center text-center will-change-[transform,opacity,filter]"
-        >
+        <motion.div initial="hidden" animate={start ? "show" : "hidden"} className="fg-content flex w-full flex-col items-center text-center">
           <div className="mb-6 flex items-center justify-center gap-4 sm:mb-8">
-            <span className="h-px w-8 bg-white/30 sm:w-14" />
-            <span className={`whitespace-nowrap text-white/70 ${T.label}`}>{HERO_KICKER}</span>
-            <span className="h-px w-8 bg-white/30 sm:w-14" />
+            <span className="h-px w-8 bg-white/30" />
+            <span className={`whitespace-nowrap text-white/70 ${TYPE.label}`}>{HERO_KICKER}</span>
+            <span className="h-px w-8 bg-white/30" />
           </div>
 
-          <h1 className={`relative z-10 mx-auto w-full max-w-[min(92vw,1100px)] text-center ${T.display}`}>
+          <h1 className="relative z-10 mx-auto w-full max-w-5xl text-center font-serif text-[clamp(3rem,8.5vw,7rem)] font-normal leading-[1.02] tracking-[-0.01em]">
             <span className="block overflow-hidden pb-[0.12em]">
-              <motion.span variants={lineMask} className="block text-white [text-shadow:0_2px_40px_rgba(0,0,0,0.9)]">
-                Engineering Digital
-              </motion.span>
+              <motion.span variants={lineMask} className="block text-white">Engineering Digital</motion.span>
             </span>
-
-            <span className="mt-1 block overflow-hidden pb-[0.14em] md:mt-2">
+            <span className="mt-1 block overflow-hidden pb-[0.14em]">
               <motion.span variants={lineMask} className="block">
-                <span className="inline-block bg-gradient-to-br from-white via-brand-green to-brand-green/70 bg-clip-text text-transparent [filter:drop-shadow(0_0_28px_rgba(36,210,56,0.35))]">
-                  {start ? <ScrambleText words={ROTATING_WORDS} hold={2200} speed={34} align="center" /> : <span>{ROTATING_WORDS[0]}</span>}
+                <span className="inline-block text-brand-green">
+                  {start ? <ScrambleText words={ROTATING_WORDS} hold={1300} speed={20} align="center" /> : <span>{ROTATING_WORDS[0]}</span>}
                 </span>
               </motion.span>
             </span>
@@ -524,18 +577,14 @@ function Hero({ start }: { start: boolean }) {
 
           <div className="mt-8 flex flex-col items-center gap-6 sm:mt-10">
             <span className="h-10 w-px bg-gradient-to-b from-white/45 to-transparent" />
-            <p className="max-w-md font-sans text-sm font-normal leading-relaxed text-white/65 sm:text-base">
-              A digital studio engineering brands that refuse to be ignored.
-            </p>
-
+            <p className={`max-w-md text-white/65 ${TYPE.body}`}>A digital studio engineering brands that refuse to be ignored.</p>
             <div className="pointer-events-auto mt-2">
-              <GlowButton href="/contact" className={`${L.button} ${T.button}`}>
+              <GlowButton href={AUDIT_HREF} className={`${L.button} ${BTN.green}`}>
                 Deploy project <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
               </GlowButton>
             </div>
           </div>
         </motion.div>
-
         <div className="absolute bottom-8 right-5 z-30 sm:bottom-10 sm:right-8">
           <SoundToggle videoRef={videoRef} />
         </div>
@@ -544,381 +593,34 @@ function Hero({ start }: { start: boolean }) {
   );
 }
 
-/* ---------- The Problem ---------- */
-function Problem() {
-  const ref = useRef<HTMLElement>(null);
-  const statement = "Having a business is one thing. Making people notice it is another.";
-
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.fromTo(
-        ".pb-word",
-        { opacity: 0.15 },
-        {
-          opacity: 1,
-          stagger: 0.05,
-          ease: "none",
-          scrollTrigger: { trigger: ".pb-statement", start: "top 80%", end: "bottom 50%", scrub: true },
-        }
-      );
-      gsap.from(".pb-item", {
-        y: 24,
-        autoAlpha: 0,
-        stagger: 0.1,
-        duration: 0.8,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".pb-list", start: "top 85%" },
-      });
-    },
-    { scope: ref }
-  );
-
-  return (
-    <section id="about" ref={ref} className={`relative z-10 w-full ${L.gutter} py-24 sm:py-36`}>
-      <div className={L.container}>
-        <p className={`mb-6 ${TYPE.label}`}>The problem</p>
-
-        <h2 className={`pb-statement max-w-5xl text-white ${TYPE.statement}`}>
-          {statement.split(" ").map((w, i) => (
-            <span key={i} className="pb-word inline-block pr-[0.22em]">
-              {w}
-            </span>
-          ))}
-        </h2>
-
-        <div className="pb-list mt-16 grid gap-10 border-t border-white/10 pt-10 sm:mt-24 md:grid-cols-3 md:gap-8">
-          {PROBLEMS.map((p) => (
-            <div key={p.title} className="pb-item">
-              <h3 className={`text-white ${TYPE.h3}`}>{p.title}</h3>
-              <p className={`mt-3 max-w-xs text-white/55 ${TYPE.small} sm:text-base`}>{p.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-20 grid gap-8 rounded-xl border border-brand-green/25 bg-brand-green/[0.06] p-8 sm:mt-28 sm:p-12 lg:grid-cols-[1fr_1.3fr] lg:items-center lg:gap-16">
-          <p className={`text-white ${TYPE.h2}`}>That&apos;s where we come in.</p>
-          <div>
-            <p className={`text-white/75 ${TYPE.body}`}>
-              Modern4labs brings creative ideas, strategy, video, design, websites and automation together, so your brand gets noticed and that
-              attention turns into enquiries.
-            </p>
-            <Link href={AUDIT_HREF} className={`mt-8 ${BTN.base} ${BTN.green}`}>
-              Book a free audit <ArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------- Global presence map ---------- */
-/* Map crop: Europe → Asia → Australia */
-const MAP_REGION = { lat: { min: -46, max: 70 }, lng: { min: -16, max: 168 } };
-const MAP_PAD = 1;
-const DOT_R = 0.26;
-const GLOW_RANGE = 7;
-const GLOW_OPACITY = [0.95, 0.6, 0.36, 0.2];
-const GREEN = "#24d238";
-
-type Pin = Hub & { x: number; y: number };
-type MapData = {
-  w: number;
-  h: number;
-  base: string;
-  glow: string[];
-  pins: Pin[];
-  arcs: { id: string; d: string; from: Pin; to: Pin }[];
-};
-
-let mapCache: MapData | null = null;
-
-const dotPath = (x: number, y: number, r: number) =>
-  `M${(x - r).toFixed(3)} ${y.toFixed(3)}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0`;
-
-function buildMap(): MapData {
-  if (mapCache) return mapCache;
-
-  const map = new DottedMap({ height: 70, grid: "diagonal", region: MAP_REGION });
-
-  const pins: Pin[] = HUBS.map((hub) => {
-    const point = map.getPin({ lat: hub.lat, lng: hub.lng });
-    if (!point) throw new Error("Unable to locate hub on map");
-    const { x, y } = point;
-    return { ...hub, x, y };
-  });
-
-  let w = 0;
-  let h = 0;
-  let base = "";
-  const glow = ["", "", "", ""];
-
-  for (const p of map.getPoints()) {
-    w = Math.max(w, p.x);
-    h = Math.max(h, p.y);
-
-    let d = Infinity;
-    for (const pin of pins) d = Math.min(d, Math.hypot(p.x - pin.x, p.y - pin.y));
-
-    if (d < GLOW_RANGE) glow[Math.min(3, Math.floor((d / GLOW_RANGE) * 4))] += dotPath(p.x, p.y, DOT_R);
-    else base += dotPath(p.x, p.y, DOT_R);
-  }
-
-  const hq = pins.find((p) => p.hq)!;
-  const arcs = pins
-    .filter((p) => !p.hq)
-    .map((to) => {
-      const dx = to.x - hq.x;
-      const dy = to.y - hq.y;
-      const dist = Math.hypot(dx, dy);
-      let nx = -dy / dist;
-      let ny = dx / dist;
-      if (ny > 0) {
-        nx = -nx;
-        ny = -ny;
-      }
-      const bend = dist * 0.22;
-      const cx = (hq.x + to.x) / 2 + nx * bend;
-      const cy = (hq.y + to.y) / 2 + ny * bend;
-      return { id: to.id, d: `M${hq.x} ${hq.y} Q${cx} ${cy} ${to.x} ${to.y}`, from: hq, to };
-    });
-
-  mapCache = { w: w + MAP_PAD * 2, h: h + MAP_PAD * 2, base, glow, pins, arcs };
-  return mapCache;
-}
-
-function useNow() {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
-const formatTime = (d: Date | null, tz: string) =>
-  d ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz }).format(d) : "--:--";
-
-function OrbitMark() {
-  return (
-    <span className="relative grid h-8 w-8 shrink-0 place-items-center">
-      <span className="absolute inset-0 rounded-full border border-dashed border-brand-green/60 motion-safe:animate-[spin_9s_linear_infinite]" />
-      <span className="absolute inset-[5px] rounded-full border border-white/20" />
-      <span className="h-1.5 w-1.5 rounded-full bg-brand-green shadow-[0_0_10px_#24d238]" />
-    </span>
-  );
-}
-
-function GlobalPresenceMap() {
-  const ref = useRef<HTMLElement>(null);
-  const { w, h, base, glow, pins, arcs } = useMemo(buildMap, []);
-  const [active, setActive] = useState<string>("colombo");
-  const reduced = useReducedMotion();
-  const now = useNow();
-
-  const pct = (p: { x: number; y: number }) => ({
-    left: `${((p.x + MAP_PAD) / w) * 100}%`,
-    top: `${((p.y + MAP_PAD) / h) * 100}%`,
-  });
-
-  useGSAP(
-    () => {
-      if (reduced) return;
-      const tl = gsap.timeline({ scrollTrigger: { trigger: ref.current, start: "top 70%" } });
-      tl.from(".pm-head > *", { y: 24, autoAlpha: 0, stagger: 0.08, duration: 0.8, ease: "power3.out" })
-        .from(".pm-dots", { autoAlpha: 0, duration: 1.2, ease: "power2.out" }, "-=0.5")
-        .fromTo(".pm-arc", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.6, stagger: 0.25, ease: "power2.inOut" }, "-=0.8")
-        .from(".pm-pin", { autoAlpha: 0, y: 10, stagger: 0.12, duration: 0.6, ease: "back.out(2)" }, "-=1.2");
-    },
-    { scope: ref, dependencies: [reduced] }
-  );
-
-  return (
-    <section ref={ref} className={`relative z-10 w-full ${L.gutter} py-20 sm:py-28`}>
-      <div className={L.container}>
-        <div className="pm-head mb-10 flex flex-col justify-between gap-6 sm:mb-14 md:flex-row md:items-end">
-          <div>
-            <p className={`mb-4 ${TYPE.label}`}>Where we work</p>
-            <h2 className={`max-w-2xl text-white ${TYPE.h2}`}>Based in Colombo. Working across borders.</h2>
-          </div>
-          <p className={`max-w-xs text-white/60 md:text-right ${TYPE.small} sm:text-base`}>
-            Clients in Sri Lanka, Sweden and Australia, all run from one studio.
-          </p>
-        </div>
-
-        <div className="relative w-full overflow-hidden rounded-xl border border-white/[0.08] bg-[#07080a]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_55%_55%,rgba(36,210,56,0.07),transparent_70%)]" />
-
-          <div className="relative" style={{ aspectRatio: `${w} / ${h}` }}>
-            <svg
-              viewBox={`${-MAP_PAD} ${-MAP_PAD} ${w} ${h}`}
-              className="pm-dots absolute inset-0 h-full w-full [mask-image:radial-gradient(ellipse_at_center,black_62%,transparent_100%)]"
-              aria-hidden
-            >
-              <defs>
-                <filter id="pm-glow" x="-200%" y="-200%" width="500%" height="500%">
-                  <feGaussianBlur stdDeviation="0.6" result="b" />
-                  <feMerge>
-                    <feMergeNode in="b" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-                {arcs.map((a) => (
-                  <linearGradient key={a.id} id={`pm-grad-${a.id}`} gradientUnits="userSpaceOnUse" x1={a.from.x} y1={a.from.y} x2={a.to.x} y2={a.to.y}>
-                    <stop offset="0%" stopColor={GREEN} stopOpacity="0.9" />
-                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
-                  </linearGradient>
-                ))}
-              </defs>
-
-              <path d={base} fill="#ffffff" fillOpacity={0.2} />
-              {glow.map((d, i) => (
-                <path key={i} d={d} fill={GREEN} fillOpacity={GLOW_OPACITY[i]} />
-              ))}
-
-              {arcs.map((a, i) => {
-                const on = active === a.id || active === "colombo";
-                return (
-                  <g key={a.id}>
-                    <path
-                      id={`pm-arc-${a.id}`}
-                      className="pm-arc"
-                      d={a.d}
-                      fill="none"
-                      stroke={`url(#pm-grad-${a.id})`}
-                      strokeWidth={0.16}
-                      strokeLinecap="round"
-                      strokeOpacity={on ? 1 : 0.3}
-                      pathLength={1}
-                      strokeDasharray={1}
-                    />
-                    {!reduced && (
-                      <circle r={0.42} fill={GREEN} filter="url(#pm-glow)">
-                        <animateMotion dur={`${3.4 + i * 0.7}s`} repeatCount="indefinite" calcMode="linear">
-                          <mpath href={`#pm-arc-${a.id}`} />
-                        </animateMotion>
-                        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur={`${3.4 + i * 0.7}s`} repeatCount="indefinite" />
-                      </circle>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-
-            {pins.map((pin) => {
-              const isActive = active === pin.id;
-              const lit = pin.hq || isActive;
-              return (
-                <div
-                  key={pin.id}
-                  className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-                  style={pct(pin)}
-                  onMouseEnter={() => setActive(pin.id)}
-                  onClick={() => setActive(pin.id)}
-                >
-                  <div className="pm-pin relative cursor-pointer">
-                    <span className="relative grid h-3 w-3 place-items-center">
-                      <span className={`absolute -inset-2 rounded-full bg-brand-green/25 motion-safe:animate-ping ${lit ? "opacity-100" : "opacity-0"}`} />
-                      <span className={`h-3 w-3 rounded-full border ${lit ? "border-brand-green bg-black shadow-[0_0_14px_#24d238]" : "border-white/50 bg-black"}`} />
-                      <span className={`absolute h-1 w-1 rounded-full ${lit ? "bg-brand-green" : "bg-white/70"}`} />
-                    </span>
-
-                    <div className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 flex-col items-center">
-                      {pin.hq ? (
-                        <div className="flex items-center gap-2.5 whitespace-nowrap rounded-md border border-white/15 bg-[#0b0c0f]/90 py-1.5 pl-1.5 pr-3.5 shadow-[0_0_40px_-6px_rgba(36,210,56,0.55)] backdrop-blur-md sm:py-2 sm:pl-2 sm:pr-4">
-                          <OrbitMark />
-                          <div className="leading-none">
-                            <span className="mb-1 inline-block rounded-[3px] bg-brand-green px-1.5 py-[3px] font-sans text-[9px] font-bold text-black">HQ</span>
-                            <p className="font-sans text-xs font-bold text-white sm:text-sm">{pin.city}</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <span
-                          className={`whitespace-nowrap rounded-[4px] border px-2 py-[3px] font-sans text-[10px] font-semibold ${
-                            isActive ? "border-brand-green/50 bg-brand-green/15 text-brand-green" : "border-white/15 bg-black/70 text-white/70"
-                          }`}
-                        >
-                          {pin.city}
-                        </span>
-                      )}
-                      <span className="h-3 w-px bg-gradient-to-b from-white/40 to-transparent" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="relative z-10 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-white/[0.06] px-5 py-3.5 sm:px-8">
-            {HUBS.map((hub) => (
-              <span key={hub.id} className="font-sans text-xs text-white/45">
-                {hub.city} <span className={`tabular-nums ${active === hub.id ? "text-brand-green" : "text-white/85"}`}>{formatTime(now, hub.tz)}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {HUBS.map((hub) => {
-            const isActive = active === hub.id;
-            return (
-              <button
-                key={hub.id}
-                type="button"
-                onMouseEnter={() => setActive(hub.id)}
-                onFocus={() => setActive(hub.id)}
-                onClick={() => setActive(hub.id)}
-                className={`rounded-lg border p-5 text-left transition-colors duration-300 ${
-                  isActive ? "border-brand-green/40 bg-brand-green/[0.06]" : "border-white/[0.07] bg-white/[0.02] hover:border-white/15"
-                }`}
-              >
-                <p className="font-sans text-lg font-bold text-white">
-                  {hub.city} <span className="font-normal text-white/40">{hub.country}</span>
-                </p>
-                <p className="mt-1 font-sans text-sm text-white/55">{hub.role}</p>
-                <p className="mt-3 font-sans text-xs text-white/40">{hub.clients.join(", ")}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------- Client logos ---------- */
 function ClientLogos() {
   const ref = useRef<HTMLElement>(null);
 
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.from(".cl-item", {
-        y: 24,
-        autoAlpha: 0,
-        stagger: 0.06,
-        duration: 0.7,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ref.current, start: "top 85%" },
-      });
-    },
-    { scope: ref }
-  );
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.from(".cl-item", { y: 24, autoAlpha: 0, stagger: 0.08, duration: 0.8, ease: "power3.out", scrollTrigger: { trigger: ref.current, start: "top 85%" } });
+  }, { scope: ref });
 
   return (
-    <section ref={ref} className={`relative z-10 w-full ${L.gutter} pb-24 sm:pb-32`}>
-      <div className={`${L.container} border-t border-white/[0.06] pt-16 sm:pt-20`}>
-        <h2 className={`cl-item mb-10 text-center text-white ${TYPE.h2}`}>Brands that trust us</h2>
-
-        <ul className="mx-auto flex max-w-4xl flex-wrap justify-center gap-3 sm:gap-4">
-          {CLIENTS.map((client) => (
-            <li key={client.name} className="cl-item w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.667rem)] lg:w-[calc(25%-0.75rem)]">
-              <div className="flex h-28 items-center justify-center rounded-lg bg-white px-6 transition-transform duration-300 hover:-translate-y-1 sm:h-32">
-                <div className="relative h-12 w-full max-w-[160px] sm:h-14">
-                  <Image src={client.logo} alt={client.name} fill sizes="160px" className="object-contain object-center" />
-                </div>
+    <section ref={ref} className={`py-12 sm:py-16 ${L.gutter}`}>
+      <div className={L.container}>
+        <p className={`cl-item mb-8 text-center ${TYPE.label}`}>Brands we&apos;ve worked with</p>
+        <ul className="mx-auto grid max-w-5xl grid-cols-2 overflow-hidden rounded-xl border border-white/[0.08] md:grid-cols-4">
+          {CLIENTS.map((client, i) => (
+            <li
+              key={client.name}
+              className={`cl-item group relative flex h-32 items-center justify-center border-white/[0.08] sm:h-40 ${i % 2 === 0 ? "border-r" : ""} ${i < 2 ? "border-b md:border-b-0" : ""} ${i === 1 ? "md:border-r" : ""}`}
+            >
+              {/* soft green glow on hover */}
+              <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(36,210,56,0.12),transparent_70%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+              <div className={`relative ${client.box}`}>
+                <Image
+                  src={client.logo}
+                  alt={client.name}
+                  fill
+                  sizes="(max-width: 768px) 40vw, 220px"
+                  className="object-contain object-center opacity-70 transition duration-500 group-hover:scale-105 group-hover:opacity-100"
+                />
               </div>
             </li>
           ))}
@@ -928,630 +630,422 @@ function ClientLogos() {
   );
 }
 
-/* ---------- Work ---------- */
-function Work() {
+function WorkAndResults() {
+  const ref = useRef<HTMLElement>(null);
+  const tween = useRef<gsap.core.Tween | null>(null);
+  const [active, setActive] = useState<Project | null>(null);
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => { setReduced(prefersReducedMotion()); }, []);
+
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    // One long track, all projects once, cloned only to make the loop seamless.
+    // The track is wider than any screen, so the same image is never visible twice.
+    tween.current = gsap.to(".work-track", { xPercent: -50, duration: 80, ease: "none", repeat: -1 });
+    gsap.from(".result-card", { y: 30, autoAlpha: 0, stagger: 0.1, duration: 0.8, ease: "power3.out", scrollTrigger: { trigger: ".result-grid", start: "top 85%" } });
+    // Roll-up counters: "+45%", "3.2x", "975K+" count up from zero, keeping prefix/suffix
+    gsap.utils.toArray<HTMLElement>(".result-num").forEach((el, i) => {
+      const raw = el.dataset.value ?? "";
+      const m = raw.match(/^([^0-9]*)([0-9.]+)(.*)$/);
+      if (!m) return;
+      const [, pre, num, suf] = m;
+      const end = parseFloat(num);
+      const decimals = num.includes(".") ? num.split(".")[1].length : 0;
+      const obj = { v: 0 };
+      el.textContent = `${pre}${(0).toFixed(decimals)}${suf}`;
+      gsap.to(obj, {
+        v: end,
+        duration: 2.2,
+        delay: i * 0.12,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ".result-grid", start: "top 85%" },
+        onUpdate: () => { el.textContent = `${pre}${obj.v.toFixed(decimals)}${suf}`; },
+      });
+    });
+  }, { scope: ref });
+
+  const setSpeed = (to: number) => {
+    if (tween.current) gsap.to(tween.current, { timeScale: to, duration: 0.6, ease: "power2.out" });
+  };
+
+  const open = (p: Project) => { setSpeed(0); setActive(p); };
+  const close = useCallback(() => { setActive(null); setSpeed(1); }, []);
+
+  const copies = reduced ? [0] : [0, 1];
+
   return (
-    <section id="work" className="relative w-full overflow-hidden bg-[#0c0d10] py-24 sm:py-32">
-      <div className={`mb-14 ${L.gutter} sm:mb-20`}>
+    <section ref={ref} className="relative w-full bg-[#0c0d10] py-14 sm:py-20">
+      <div className={`mb-8 ${L.gutter} sm:mb-10`}>
         <div className={`${L.container} flex flex-col justify-between gap-6 md:flex-row md:items-end`}>
           <div>
             <p className={`mb-4 ${TYPE.label}`}>Our work</p>
-            <h2 className={`max-w-2xl text-white ${TYPE.h2}`}>Work that gets noticed.</h2>
+            <h2 className={`max-w-2xl text-white ${TYPE.h2}`}>Case studies & results.</h2>
           </div>
-          <p className={`max-w-xs text-white/60 md:text-right ${TYPE.small} sm:text-base`}>Reels, ads and pages made for real clients.</p>
+          <p className={`max-w-xs text-white/60 md:text-right ${TYPE.small}`}>Shoots, edits and brand work for real clients. Tap a project to see what we did.</p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-5 sm:gap-6">
-        {[0, 1].map((row) => (
-          <div key={row} className="flex w-full">
-            <motion.div
-              animate={{ x: row === 0 ? ["0%", "-50%"] : ["-50%", "0%"] }}
-              transition={{ duration: row === 0 ? 55 : 65, ease: "linear", repeat: Infinity }}
-              className="flex w-max gap-5 px-3 sm:gap-6"
-            >
-              {[0, 1].map((copy) => (
-                <div key={copy} className="flex gap-5 sm:gap-6">
-                  {(row === 0 ? PROJECT_IMAGES : [...PROJECT_IMAGES].reverse()).map((img, i) => (
-                    <div
-                      key={i}
-                      className="group relative h-[220px] w-[320px] overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.03] sm:h-[320px] sm:w-[460px] lg:h-[380px] lg:w-[580px]"
-                    >
-                      <Image
-                        src={img}
-                        alt={`Modern4labs project ${i + 1}`}
-                        fill
-                        sizes="(max-width: 768px) 320px, (max-width: 1024px) 460px, 580px"
-                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                      />
-                    </div>
-                  ))}
-                </div>
+      <div
+        className={`pl-5 sm:pl-6 ${reduced ? "overflow-x-auto pb-4" : "overflow-hidden"}`}
+        onMouseEnter={() => setSpeed(0.15)}
+        onMouseLeave={() => !active && setSpeed(1)}
+      >
+        <div className="work-track flex w-max">
+          {copies.map((copy) => (
+            <ul key={copy} aria-hidden={copy === 1} className="flex gap-5 pr-5 sm:gap-6 sm:pr-6">
+              {PROJECTS.map((p) => (
+                <li key={`${copy}-${p.id}`}>
+                  <button
+                    type="button"
+                    tabIndex={copy === 1 ? -1 : 0}
+                    onClick={() => open(p)}
+                    className="group relative block h-[240px] w-[320px] overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.03] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green sm:h-[320px] sm:w-[460px] lg:h-[380px] lg:w-[560px]"
+                  >
+                    <Image src={p.image} alt={p.title} fill sizes="(max-width: 768px) 320px, (max-width: 1024px) 460px, 560px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                    <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-90 transition-opacity duration-500 sm:opacity-60 sm:group-hover:opacity-100" />
+                    <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-6">
+                      <span>
+                        <span className="block font-sans text-xs font-medium text-brand-green">{p.category}</span>
+                        <span className="mt-1 block font-display text-lg font-medium leading-snug tracking-[-0.02em] text-white sm:text-xl">{p.title}</span>
+                      </span>
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-black transition-transform duration-500 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+                      </span>
+                    </span>
+                  </button>
+                </li>
               ))}
-            </motion.div>
-          </div>
-        ))}
+            </ul>
+          ))}
+        </div>
       </div>
+
+      <div className={`${L.gutter} mt-10 sm:mt-14`}>
+        <div className={`${L.container} result-grid grid gap-5 sm:grid-cols-3`}>
+          {RESULTS.map((r) => (
+            <div key={r.label} className="result-card rounded-xl border border-white/10 bg-white/[0.02] p-7 sm:p-8">
+              <p className="font-display text-[clamp(2.5rem,4vw,3.5rem)] font-semibold tabular-nums tracking-[-0.04em] text-brand-green">
+                <span className="result-num" data-value={r.value} aria-label={r.value}>{r.value}</span>
+              </p>
+              <p className={`mt-3 font-medium text-white/90 ${TYPE.body}`}>{r.label}</p>
+              <p className={`mt-1 text-white/50 ${TYPE.small}`}>{r.client}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <ProjectModal project={active} onClose={close} />
     </section>
   );
 }
 
+function ProjectModal({ project, onClose }: { project: Project | null; onClose: () => void }) {
+  const lenis = useLenis();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const [mounted, setMounted] = useState(false);
 
-/* ---------- Services (accordion + cursor preview) ---------- */
+  useEffect(() => { setMounted(true); }, []);
 
-function PreviewMock({ kind }: { kind: ServicePreview }) {
-  if (kind === "video") {
-    return (
-      <div className="relative mx-auto aspect-[9/16] h-full overflow-hidden rounded-xl border border-white/15 bg-gradient-to-br from-brand-green/50 via-[#0f2a17] to-black p-3">
-        <div className="flex items-center gap-1.5">
-          <span className="h-5 w-5 rounded-full bg-white/80" />
-          <span className="h-1.5 w-14 rounded-full bg-white/60" />
-        </div>
-        <div className="absolute inset-0 grid place-items-center">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/90 shadow-xl">
-            <svg viewBox="0 0 24 24" className="ml-0.5 h-5 w-5 fill-black">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </span>
-        </div>
-        <div className="absolute inset-x-3 bottom-4 space-y-1.5">
-          <span className="block h-2 w-4/5 rounded-full bg-white/80" />
-          <span className="block h-2 w-3/5 rounded-full bg-white/50" />
-          <span className="mt-3 block h-0.5 w-full overflow-hidden rounded-full bg-white/20">
-            <motion.span
-              className="block h-full bg-brand-green"
-              animate={{ width: ["0%", "100%"] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-            />
-          </span>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!project) return;
+    lenis?.stop();
+    const prev = document.activeElement as HTMLElement | null;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    requestAnimationFrame(() => closeRef.current?.focus());
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      lenis?.start();
+      prev?.focus?.();
+    };
+  }, [project, lenis, onClose]);
 
-  if (kind === "ads") {
-    return (
-      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-white/15 bg-white text-black">
-        <div className="flex items-center gap-2 p-3">
-          <span className="h-6 w-6 rounded-full bg-brand-green" />
-          <div>
-            <span className="block h-1.5 w-16 rounded-full bg-black/70" />
-            <span className="mt-1 block text-[8px] text-black/50">Sponsored</span>
-          </div>
-        </div>
-        <div className="relative flex-1 bg-gradient-to-br from-blue-500 to-blue-800">
-          <div className="absolute bottom-3 left-3 flex items-end gap-1.5">
-            {[18, 28, 22, 38, 52].map((h, i) => (
-              <motion.span
-                key={i}
-                className="w-3 rounded-sm bg-white/85"
-                initial={{ height: 0 }}
-                animate={{ height: h }}
-                transition={{ delay: 0.1 + i * 0.08, duration: 0.5, ease: EASE }}
-              />
-            ))}
-          </div>
-          <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-bold text-blue-700">+ leads</span>
-        </div>
-        <div className="flex items-center justify-between p-3">
-          <span className="text-[10px] font-bold">Book a viewing</span>
-          <span className="rounded-md bg-black px-2 py-1 text-[9px] font-bold text-white">Learn more</span>
-        </div>
-      </div>
-    );
-  }
+  if (!mounted) return null;
 
-  if (kind === "page") {
-    return (
-      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-white/15 bg-[#f6f7f9] text-black">
-        <div className="flex items-center gap-1 border-b border-black/10 bg-white px-3 py-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-black/20" />
-          <span className="h-1.5 w-1.5 rounded-full bg-black/20" />
-          <span className="h-1.5 w-1.5 rounded-full bg-black/20" />
-          <span className="ml-2 h-2 flex-1 rounded-full bg-black/5" />
-        </div>
-        <div className="flex flex-1 flex-col gap-2 p-4">
-          <span className="h-3 w-4/5 rounded-full bg-black/80" />
-          <span className="h-3 w-3/5 rounded-full bg-black/80" />
-          <span className="mt-1 h-1.5 w-full rounded-full bg-black/15" />
-          <span className="h-1.5 w-5/6 rounded-full bg-black/15" />
-          <div className="mt-auto space-y-1.5 rounded-xl bg-white p-3 shadow-sm">
-            <span className="block h-5 rounded-md border border-black/10" />
-            <span className="block h-5 rounded-md border border-black/10" />
-            <motion.span
-              className="block h-6 rounded-md bg-brand-green"
-              animate={{ scale: [1, 1.04, 1] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Portal to <body>: the section wrappers create stacking contexts (z-10/z-20),
+  // which would otherwise trap the modal underneath the next section.
+  return createPortal(
+    <AnimatePresence>
+      {project && (
+        <motion.div
+          key={project.id}
+          className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <button type="button" aria-label="Close project" onClick={onClose} className="absolute inset-0 cursor-default bg-black/75 backdrop-blur-sm" />
 
-  const bubbles = [
-    { me: false, w: "w-3/4", text: "Hi, I saw your ad. Is this still available?" },
-    { me: true, w: "w-2/3", text: "Yes! Here's a link to book a quick call." },
-    { me: false, w: "w-1/2", text: "Booked for Friday 👍" },
-  ];
-  return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-white/15 bg-[#0b141a]">
-      <div className="flex items-center gap-2 bg-[#1f2c33] px-3 py-2.5">
-        <span className="h-6 w-6 rounded-full bg-brand-green/80" />
-        <span className="text-[10px] font-bold text-white">New lead</span>
-        <span className="ml-auto text-[9px] text-brand-green">online</span>
-      </div>
-      <div className="flex flex-1 flex-col justify-end gap-2 p-3">
-        {bubbles.map((b, i) => (
-          <motion.p
-            key={i}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 + i * 0.35, duration: 0.35 }}
-            className={`${b.w} rounded-lg px-2.5 py-1.5 text-[10px] leading-snug ${
-              b.me ? "self-end bg-[#005c4b] text-white" : "self-start bg-[#202c33] text-white/90"
-            }`}
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-title"
+            data-lenis-prevent
+            initial={{ y: 48, scale: 0.96, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 24, scale: 0.98, opacity: 0 }}
+            transition={{ duration: 0.5, ease: EASE }}
+            className="relative max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-white/10 bg-[#121418] font-sans shadow-[0_40px_120px_rgba(0,0,0,0.6)] sm:rounded-2xl"
           >
-            {b.text}
-          </motion.p>
-        ))}
+            <div className="relative aspect-[16/9] w-full">
+              <Image src={project.image} alt={project.title} fill sizes="(max-width: 768px) 100vw, 672px" className="object-cover" />
+              <span className="absolute inset-0 bg-gradient-to-t from-[#121418] via-transparent to-transparent" />
+              <button
+                ref={closeRef}
+                type="button"
+                onClick={onClose}
+                aria-label="Close project"
+                className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/60 text-white backdrop-blur transition hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-green"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+
+            <div className="p-6 sm:p-8">
+              <p className={TYPE.label}>{project.category}</p>
+              <h3 id="project-title" className="mt-2 font-display text-[clamp(1.5rem,3vw,2rem)] font-semibold leading-tight tracking-[-0.03em] text-white">{project.title}</h3>
+
+              <p className={`mt-5 text-white/75 ${TYPE.body}`}>{project.summary}</p>
+
+              <div className="mt-6 flex flex-wrap gap-2">
+                {project.services.map((s) => (
+                  <span key={s} className="rounded-md border border-white/15 px-2.5 py-1 text-xs font-medium text-white/75">{s}</span>
+                ))}
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <BookCallButton className={`${BTN.base} ${BTN.green}`}>Book a 20-min call <ArrowRight size={16} /></BookCallButton>
+                <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.dark}`}>Back to projects</button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+function ProofBand() {
+  const ref = useRef<HTMLElement>(null);
+
+  const stats = [
+    { value: CLIENTS.length, suffix: "", label: "Brands we've worked with" },
+    { value: SERVICES.length, suffix: "", label: "Services under one roof" },
+    { value: 2, suffix: "", label: "Markets: Sri Lanka & Australia" },
+    { value: 14, suffix: " days", label: "Typical time to first launch" },
+  ];
+
+  useGSAP(() => {
+    gsap.utils.toArray<HTMLElement>(".proof-num").forEach((el) => {
+      const end = Number(el.dataset.value);
+      if (prefersReducedMotion()) { el.textContent = String(end); return; }
+      const obj = { v: 0 };
+      gsap.to(obj, {
+        v: end, duration: 1.4, ease: "power2.out",
+        scrollTrigger: { trigger: el, start: "top 88%" },
+        onUpdate: () => { el.textContent = String(Math.round(obj.v)); },
+      });
+    });
+    if (prefersReducedMotion()) return;
+    gsap.from(".proof-item", { y: 24, autoAlpha: 0, stagger: 0.08, duration: 0.8, ease: "power3.out", scrollTrigger: { trigger: ref.current, start: "top 80%" } });
+  }, { scope: ref });
+
+  return (
+    <section ref={ref} className={`py-12 sm:py-16 ${L.gutter}`}>
+      <div className={`${L.container} grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16`}>
+        <div className="proof-item">
+          <p className={`mb-4 ${TYPE.label}`}>Why brands trust us</p>
+          <h2 className={`text-white ${TYPE.h2}`}>Strategy, production and tech under one roof.</h2>
+          <p className={`mt-5 max-w-lg text-white/60 ${TYPE.body}`}>
+            Most brands juggle a videographer, an ads freelancer and a web developer who never talk to each other. We plan, film, edit, run ads and build the pages in one place, so every piece pushes toward the same goal: more enquiries.
+          </p>
+          <ul className="mt-8 flex flex-wrap gap-2">
+            {TOOLS.map((t) => (
+              <li key={t} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/65">{t}</li>
+            ))}
+          </ul>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.08]">
+          {stats.map((s) => (
+            <div key={s.label} className="proof-item bg-[#101216] p-6 sm:p-8">
+              <dt className="sr-only">{s.label}</dt>
+              <dd>
+                <span className="font-display text-[clamp(2.25rem,4vw,3.25rem)] font-semibold tracking-[-0.04em] text-white">
+                  <span className="proof-num" data-value={s.value}>{s.value}</span>
+                  <span className="text-brand-green">{s.suffix || "+"}</span>
+                </span>
+                <span className="mt-2 block text-sm leading-snug text-white/55">{s.label}</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
       </div>
-    </div>
+    </section>
   );
 }
 
 function Services() {
   const ref = useRef<HTMLElement>(null);
-  const [open, setOpen] = useState(0);
-  const [hovered, setHovered] = useState<number | null>(null);
-  const [fine, setFine] = useState(false);
+  const [open, setOpen] = useState<number | null>(0);
 
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 260, damping: 28, mass: 0.6 });
-  const sy = useSpring(my, { stiffness: 260, damping: 28, mass: 0.6 });
-
-  useEffect(() => {
-    setFine(isFinePointer() && !prefersReducedMotion());
-  }, []);
-
-  const onMove = (e: MouseEvent<HTMLElement>) => {
-    if (!fine || !ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    mx.set(x > r.width * 0.6 ? x - 244 : x + 24);
-    my.set(e.clientY - r.top - 140);
-  };
-
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.utils.toArray<HTMLElement>(".svc-line").forEach((line) => {
-        gsap.fromTo(line, { scaleX: 0 }, { scaleX: 1, duration: 1.2, ease: "power3.inOut", scrollTrigger: { trigger: line, start: "top 92%" } });
-      });
-      gsap.from(".svc-row-inner", {
-        y: 30,
-        autoAlpha: 0,
-        stagger: 0.1,
-        duration: 0.8,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".svc-list", start: "top 80%" },
-      });
-    },
-    { scope: ref }
-  );
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    // Only the dividers animate. Text is never hidden behind a scroll trigger.
+    gsap.utils.toArray<HTMLElement>(".svc-rule").forEach((line) => {
+      gsap.fromTo(line, { scaleX: 0 }, { scaleX: 1, duration: 1.1, ease: "power3.inOut", scrollTrigger: { trigger: line, start: "top 95%" } });
+    });
+  }, { scope: ref });
 
   return (
-    <section id="services" ref={ref} onMouseMove={onMove} className={`relative w-full ${L.gutter} py-16 sm:py-24`}>
-      <div className={`${L.container} relative overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#15171c] via-[#0b0c0f] to-black px-5 py-14 sm:px-10 sm:py-20 lg:px-14`}>
-        {/* Header */}
-        <div className="relative mb-14 grid gap-6 sm:mb-20 lg:grid-cols-[110px_1fr] lg:gap-x-8">
-          <p className={`lg:pt-6 ${TYPE.label}`}>What we do</p>
+    <section
+      ref={ref}
+      className={`relative w-full ${L.gutter} py-14 sm:py-20`}
+      style={{ background: "radial-gradient(ellipse 70% 60% at 15% 30%, rgba(255,255,255,0.045), transparent 70%), radial-gradient(ellipse 60% 50% at 85% 80%, rgba(255,255,255,0.03), transparent 70%)" }}
+    >
+      <div className={L.container}>
+        <div className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-start">
           <div>
-            <h2 className="relative inline-block font-sans text-[clamp(3.5rem,11vw,9rem)] font-bold leading-[0.9] tracking-[-0.05em] text-white">
-              <span className="block overflow-hidden pb-[0.08em]">
-                <motion.span className="block" variants={lineMask} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.6 }}>
-                  Services.
-                </motion.span>
-              </span>
-              <span className="absolute -right-2 top-1 translate-x-full font-sans text-[clamp(1rem,2.4vw,1.75rem)] font-medium tracking-normal text-white/35">
-                ({SERVICES.length})
-              </span>
-            </h2>
-            <p className={`mt-6 max-w-lg text-white/65 ${TYPE.body}`}>Four services, one team. Built to work together.</p>
+            <h2 className="font-display text-[clamp(2.25rem,4.2vw,3.25rem)] font-semibold leading-none tracking-[-0.035em] text-white">What we do</h2>
+            <span className="mt-6 block h-px w-56 bg-gradient-to-r from-white/70 to-transparent" />
           </div>
+          <p className="max-w-[17rem] text-sm leading-relaxed text-white/65">
+            Five services that work on their own or together, all connected to one tracking setup. Open one to see what you get.
+          </p>
         </div>
 
-        {/* Rows */}
-        <div className="svc-list relative" onMouseLeave={() => setHovered(null)}>
+        <ul className="relative">
+          <span className="svc-rule absolute inset-x-0 top-0 h-px origin-left bg-white/10" />
           {SERVICES.map((s, i) => {
             const isOpen = open === i;
             return (
-              <div key={s.id} className="relative" onMouseEnter={() => setHovered(i)}>
-                <span className="svc-line absolute inset-x-0 top-0 h-px origin-left bg-white/[0.12]" />
+              <li key={s.id} className="relative">
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={`svc-panel-${s.id}`}
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  className="group grid w-full grid-cols-[2.5rem_1fr_auto] items-center gap-x-4 py-6 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-green sm:grid-cols-[5.5rem_1fr_auto] sm:py-7"
+                >
+                  <span className="text-xs tabular-nums text-white/60">{String(i + 1).padStart(2, "0")}</span>
+                  <span className={`font-display text-[clamp(1.3rem,2.1vw,1.75rem)] font-semibold tracking-[-0.025em] transition-colors duration-300 ${isOpen ? "text-white" : "text-white/85 group-hover:text-white"}`}>
+                    {s.title}
+                  </span>
+                  <span className={`grid h-7 w-7 place-items-center rounded-full border transition-all duration-300 ${isOpen ? "rotate-45 border-white text-white" : "border-white/45 text-white/75 group-hover:border-white"}`}>
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+                  </span>
+                </button>
 
-                <div className="svc-row-inner">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-controls={`svc-panel-${s.id}`}
-                    onClick={() => setOpen(isOpen ? -1 : i)}
-                    className="group grid w-full grid-cols-[1fr_auto] items-start gap-x-4 gap-y-5 rounded-md py-8 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green sm:py-10 lg:grid-cols-[110px_1.2fr_1fr_44px] lg:gap-x-8"
-                  >
-                    <span className="col-start-1 row-start-1 font-sans text-sm tabular-nums text-white/45 lg:pt-3">({s.num})</span>
-
-                    <span
-                      className={`col-start-2 row-start-1 grid h-11 w-11 place-items-center rounded-full border transition-colors duration-300 lg:col-start-4 ${
-                        isOpen ? "border-white bg-white" : "border-white/20 group-hover:border-white/50"
-                      }`}
-                    >
-                      <span className="relative block h-3.5 w-3.5">
-                        <span className={`absolute left-0 top-1/2 h-[1.5px] w-full -translate-y-1/2 ${isOpen ? "bg-black" : "bg-white"}`} />
-                        <span
-                          className={`absolute left-1/2 top-0 h-full w-[1.5px] -translate-x-1/2 transition-transform duration-300 ${isOpen ? "rotate-90 bg-black" : "bg-white"}`}
-                        />
-                      </span>
-                    </span>
-
-                    <div className="col-span-2 lg:col-span-1 lg:col-start-2 lg:row-start-1">
-                      <h3 className={`transition-colors duration-300 ${TYPE.h3} !text-[clamp(1.75rem,3.2vw,2.75rem)] ${isOpen ? "text-white" : "text-white/70 group-hover:text-white"}`}>
-                        {s.title}
-                      </h3>
-                      <p className={`mt-3 max-w-md text-white/60 ${TYPE.small} sm:text-base`}>{s.promise}</p>
-                    </div>
-
-                    <div className="col-span-2 lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:pt-2">
-                      <p className="mb-3 font-sans text-xs text-white/40">What&apos;s included</p>
-                      <div className="flex flex-wrap gap-2">
-                        {s.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className={`rounded-[4px] border px-2.5 py-1 font-sans text-xs font-medium transition-colors duration-300 ${
-                              isOpen ? "border-white bg-white text-black" : "border-white/15 text-white/70"
-                            }`}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </button>
-
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        id={`svc-panel-${s.id}`}
-                        key="panel"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.5, ease: EASE }}
-                        className="overflow-hidden"
-                      >
-                        <div className="grid gap-6 pb-10 lg:grid-cols-[110px_1fr_44px] lg:gap-x-8">
-                          <div className="hidden lg:block" />
-                          <div className="grid gap-6 rounded-lg border border-white/[0.08] bg-white/[0.03] p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
-                            <div>
-                              <p className="mb-2 font-sans text-xs font-semibold text-brand-green">What you get</p>
-                              <p className="font-sans text-base leading-relaxed text-white/85 sm:text-lg">{s.monthly}</p>
-                              {s.proof && (
-                                <p className="mt-4 font-sans text-sm text-white/50">
-                                  Working with <span className="font-semibold text-white">{s.proof}</span>
-                                </p>
-                              )}
-                            </div>
-                            <Link href={`/contact?service=${s.id}`} className={`${BTN.base} ${BTN.green} justify-self-start sm:justify-self-end`}>
-                              Book a free audit <ArrowRight size={16} />
-                            </Link>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div id={`svc-panel-${s.id}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.45, ease: EASE }} className="overflow-hidden">
+                      <div className="grid grid-cols-[2.5rem_1fr] gap-x-4 pb-8 sm:grid-cols-[5.5rem_1fr]">
+                        <span />
+                        <div className="grid gap-6 pt-1 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-12">
+                          <div className="max-w-xl">
+                            <p className="text-sm leading-relaxed text-white/70">
+                              {s.promise} {s.monthly}
+                              {s.proof && <> Currently working with <span className="text-white">{s.proof}</span>.</>}
+                            </p>
+                            <ul className="mt-5 flex flex-wrap gap-2">
+                              {s.tags.map((t) => (
+                                <li key={t} className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/70">{t}</li>
+                              ))}
+                            </ul>
                           </div>
-                          <div className="mx-auto h-64 w-52 lg:hidden">
-                            <PreviewMock kind={s.preview} />
-                          </div>
+                          <BookCallButton className={`${BTN.base} ${BTN.green} justify-self-start`}>Book a 20-min call <ArrowRight size={16} /></BookCallButton>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <span className="svc-rule absolute inset-x-0 bottom-0 h-px origin-left bg-white/10" />
+              </li>
             );
           })}
-        </div>
+        </ul>
 
-        {/* Footer */}
-        <div className="relative grid gap-6 pt-10 lg:grid-cols-[110px_1fr_auto] lg:items-center lg:gap-x-8">
-          <span className="svc-line absolute inset-x-0 top-0 h-px origin-left bg-white/[0.12]" />
-          <div className="hidden lg:block" />
-          <p className={`max-w-md text-white/60 ${TYPE.small} sm:text-base`}>
-            <span className="font-bold text-white">Prices on the table.</span> Fixed monthly packages. You see the price before the first call.
-          </p>
-          <Link href="/contact" className={`${BTN.base} ${BTN.white} justify-self-start`}>
-            Get started
-          </Link>
-        </div>
-      </div>
-
-      {fine && (
-        <motion.div aria-hidden className="pointer-events-none absolute left-0 top-0 z-30 hidden h-[280px] w-[220px] lg:block" style={{ x: sx, y: sy }}>
-          <AnimatePresence>
-            {hovered !== null && (
-              <motion.div
-                key={hovered}
-                initial={{ opacity: 0, scale: 0.85, rotate: -4 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.9, rotate: 3 }}
-                transition={{ duration: 0.35, ease: EASE }}
-                className="absolute inset-0 drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]"
-              >
-                <PreviewMock kind={SERVICES[hovered].preview} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      )}
-    </section>
-  );
-}
-
-/* ---------- Compare: why not do it yourself? ---------- */
-function Check({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" className={`h-4 w-4 shrink-0 ${className}`} fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden>
-      <path d="M4 10.5l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function Compare() {
-  const ref = useRef<HTMLElement>(null);
-
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.from(".cmp-head > *", {
-        y: 30,
-        autoAlpha: 0,
-        stagger: 0.08,
-        duration: 0.8,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ref.current, start: "top 75%" },
-      });
-      gsap.from(".cmp-row", {
-        y: 16,
-        autoAlpha: 0,
-        stagger: 0.07,
-        duration: 0.6,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".cmp-table", start: "top 80%" },
-      });
-    },
-    { scope: ref }
-  );
-
-  return (
-    <section ref={ref} className={`relative w-full ${L.gutter} py-16 sm:py-24`}>
-      <div className={`${L.container} rounded-xl bg-[#f2f2f0] px-5 py-12 text-[#0c0d10] sm:px-10 sm:py-16 lg:px-14 lg:py-20`}>
-        <div className="cmp-head mb-12 grid gap-6 sm:mb-16 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+        <div className="mt-10 grid gap-6 rounded-xl border border-brand-green/20 bg-brand-green/[0.04] p-6 sm:p-8 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-12">
           <div>
-            <p className={`mb-4 text-[#0c0d10]/50 ${T.label}`}>Why modern4labs</p>
-            <h2 className={`text-[#0c0d10] ${TYPE.h2}`}>
-              Why not just
-              <br />
-              <span className="text-black/35">do it yourself?</span>
-            </h2>
+            <p className={TYPE.label}>Built into everything we make</p>
+            <h3 className="mt-2 font-display text-[clamp(1.35rem,2.2vw,1.85rem)] font-semibold leading-tight tracking-[-0.025em] text-white">Every visitor tracked. Every lead accounted for.</h3>
+            <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/65">
+              Most businesses run ads and never find out who clicked, who left and who bought. We connect your site, ads and CRM so you see the full journey of every person who engages with your brand, and you get all of that data.
+            </p>
           </div>
-          <p className="max-w-md font-sans text-base leading-relaxed text-black/65 sm:text-lg lg:justify-self-end">
-            You could. Here&apos;s what changes when a team built for attention does it with you.
-          </p>
+          <ol className="grid gap-px overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.08] sm:grid-cols-4">
+            {[
+              { k: "Click", v: "Meta Pixel & Conversions API" },
+              { k: "Visit", v: "Google Analytics 4" },
+              { k: "Lead", v: "GoHighLevel CRM" },
+              { k: "Follow-up", v: "WhatsApp, email & SMS" },
+            ].map((x) => (
+              <li key={x.k} className="bg-[#101216] p-4">
+                <p className="text-xs font-medium text-brand-green">{x.k}</p>
+                <p className="mt-1 text-sm leading-snug text-white/80">{x.v}</p>
+              </li>
+            ))}
+          </ol>
         </div>
 
-        {/* Desktop table */}
-        <div className="cmp-table hidden md:block" role="table" aria-label="Doing it yourself versus a typical provider versus Modern4labs">
-          <div className="grid grid-cols-[0.8fr_1fr_1fr_1.25fr]" role="row">
-            <span role="columnheader" />
-            <span role="columnheader" className="px-5 pb-4 font-sans text-sm font-semibold text-black/50">
-              Doing it yourself
-            </span>
-            <span role="columnheader" className="px-5 pb-4 font-sans text-sm font-semibold text-black/50">
-              A typical provider
-            </span>
-            <span role="columnheader" className="rounded-t-lg bg-[#0c0d10] px-6 pb-4 pt-5 font-sans text-base font-bold text-brand-green">
-              Modern4labs
-            </span>
-          </div>
-          {COMPARE.map((r, i) => (
-            <div key={r.row} role="row" className="cmp-row grid grid-cols-[0.8fr_1fr_1fr_1.25fr]">
-              <span role="rowheader" className="border-t border-black/10 py-5 pr-4 font-sans text-sm font-bold">
-                {r.row}
-              </span>
-              <span role="cell" className="border-t border-black/10 px-5 py-5 font-sans text-sm leading-relaxed text-black/50">
-                {r.diy}
-              </span>
-              <span role="cell" className="border-t border-black/10 px-5 py-5 font-sans text-sm leading-relaxed text-black/50">
-                {r.typical}
-              </span>
-              <span
-                role="cell"
-                className={`flex items-start gap-3 border-t border-white/10 bg-[#0c0d10] px-6 py-5 font-sans text-[15px] font-semibold leading-relaxed text-white ${
-                  i === COMPARE.length - 1 ? "rounded-b-lg" : ""
-                }`}
-              >
-                <Check className="mt-1 text-brand-green" />
-                {r.us}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Mobile list */}
-        <div className="cmp-table space-y-3 md:hidden">
-          {COMPARE.map((r) => (
-            <div key={r.row} className="cmp-row rounded-lg bg-white p-5">
-              <p className="font-sans text-xs font-semibold text-black/45">{r.row}</p>
-              <p className="mt-2 flex items-start gap-2.5 font-sans text-base font-bold leading-snug">
-                <Check className="mt-1 text-[#1a9b2b]" />
-                {r.us}
-              </p>
-              <p className="mt-3 border-t border-black/10 pt-3 font-sans text-xs leading-relaxed text-black/45">
-                Instead of: {r.diy.toLowerCase()}, or {r.typical.toLowerCase()}.
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className={`max-w-md text-black/60 ${TYPE.small} sm:text-base`}>See what this looks like for your business in a free 20-minute call.</p>
-          <Link href={AUDIT_HREF} className={`${BTN.base} ${BTN.dark}`}>
-            Book a free audit <ArrowRight size={16} />
-          </Link>
+        <div className="mt-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+          <p className="max-w-md text-sm leading-relaxed text-white/60"><span className="font-semibold text-white">Prices on the table.</span> Fixed packages. You see the price before the first call.</p>
+          <Link href="/contact" className={`${BTN.base} ${BTN.white} justify-self-start`}>Get started</Link>
         </div>
       </div>
     </section>
   );
 }
 
-/* ---------- The Numbers: why creativity matters ---------- */
-function TheNumbers() {
-  const ref = useRef<HTMLElement>(null);
-  const INK = "#0d3b1e";
-
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-
-      ref.current?.querySelectorAll<HTMLElement>("[data-count]").forEach((el) => {
-        const end = Number(el.dataset.count);
-        const dec = Number(el.dataset.decimals ?? 0);
-        const o = { v: 0 };
-        el.textContent = (0).toFixed(dec);
-        gsap.to(o, {
-          v: end,
-          duration: 1.6,
-          ease: "power2.out",
-          onUpdate: () => {
-            el.textContent = o.v.toFixed(dec);
-          },
-          scrollTrigger: { trigger: el, start: "top 88%" },
-        });
-      });
-
-      gsap.from(".num-card", {
-        y: 30,
-        autoAlpha: 0,
-        stagger: 0.1,
-        duration: 0.8,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".num-grid", start: "top 80%" },
-      });
-    },
-    { scope: ref }
-  );
-
-  return (
-    <section ref={ref} className={`relative w-full ${L.gutter} py-16 sm:py-24`}>
-      <div className={`${L.container} rounded-xl bg-[#0d3b1e] px-5 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20`}>
-        <p className={`mb-6 text-[#4ade80] ${T.label}`}>Why creativity matters</p>
-        <h2 className={`max-w-4xl text-white ${TYPE.statement}`}>Creativity turns attention into opportunity.</h2>
-        <p className={`mt-6 max-w-xl text-white/70 ${TYPE.body}`}>Your customers are already online. The question is whether they stop for you.</p>
-
-        <div className="num-grid mt-14 grid gap-3 sm:mt-20 sm:gap-4 lg:grid-cols-3">
-          {STATS.map((s) => (
-            <div key={s.label} className="num-card flex flex-col rounded-lg bg-white p-6 sm:p-8" style={{ color: INK }}>
-              <p className="font-sans text-[clamp(3.5rem,7vw,5.5rem)] font-bold leading-none tracking-[-0.05em] tabular-nums">
-                {s.prefix}
-                <span data-count={s.value} data-decimals={s.decimals}>
-                  {s.value.toFixed(s.decimals)}
-                </span>
-                {s.suffix}
-              </p>
-              <p className="mt-3 font-sans text-base leading-snug opacity-75">{s.label}</p>
-              <p className="mt-8 border-t border-[#0d3b1e]/15 pt-5 font-sans text-lg font-bold leading-snug tracking-[-0.01em]">{s.point}</p>
-              <p className="mt-auto pt-6 font-sans text-[11px] opacity-50">Source: {s.source}</p>
-            </div>
-          ))}
-        </div>
-
-        {RESULTS.length > 0 && (
-          <div className="mt-14 sm:mt-20">
-            <p className={`mb-6 text-[#4ade80] ${T.label}`}>Results from our work</p>
-            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-              {RESULTS.map((r) => (
-                <div key={r.label} className="rounded-lg border border-white/15 p-6">
-                  <p className="font-sans text-5xl font-bold tracking-[-0.04em] text-white">{r.value}</p>
-                  <p className="mt-2 font-sans text-sm text-white/70">{r.label}</p>
-                  <p className="mt-4 font-sans text-xs text-[#4ade80]">{r.client}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-14 grid gap-8 border-t border-white/15 pt-10 sm:mt-20 md:grid-cols-3">
-          {PILLARS.map((p) => (
-            <div key={p.word}>
-              <h3 className={`text-white ${TYPE.h3}`}>{p.word}</h3>
-              <p className="mt-2 font-sans text-base text-white/65">{p.line}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------- How It Works ---------- */
 function HowItWorks() {
   const ref = useRef<HTMLElement>(null);
   const [reached, setReached] = useState(0);
 
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) {
-        setReached(STEPS.length);
-        return;
-      }
-      const st = { trigger: ".hiw-track", start: "top 75%", end: "bottom 50%", scrub: 0.6 };
-      gsap.fromTo(
-        ".hiw-fill",
-        { scaleX: 0 },
-        { scaleX: 1, ease: "none", scrollTrigger: { ...st, onUpdate: (self) => setReached(Math.ceil(self.progress * STEPS.length)) } }
-      );
-      gsap.fromTo(".hiw-fill-v", { scaleY: 0 }, { scaleY: 1, ease: "none", scrollTrigger: st });
-    },
-    { scope: ref }
-  );
+  useGSAP(() => {
+    if (prefersReducedMotion()) {
+      setReached(STEPS.length);
+      gsap.set(".hiw-fill", { scaleX: 1 });
+      gsap.set(".hiw-fill-v", { scaleY: 1 });
+      return;
+    }
+    // Plays once when the section is in view, step by step:
+    // light a step, hold, then draw the line to the next one.
+    const n = STEPS.length;
+    gsap.set(".hiw-fill", { scaleX: 0 });
+    gsap.set(".hiw-fill-v", { scaleY: 0 });
+    const tl = gsap.timeline({
+      scrollTrigger: { trigger: ".hiw-track", start: "top 70%", toggleActions: "play none none none", once: true },
+    });
+    for (let i = 0; i < n; i++) {
+      tl.call(() => setReached(i + 1), undefined, ">0.35");
+      tl.to(".hiw-fill", { scaleX: (i + 1) / n, duration: 1.1, ease: "power1.inOut" }, ">0.25");
+      tl.to(".hiw-fill-v", { scaleY: (i + 1) / n, duration: 1.1, ease: "power1.inOut" }, "<");
+    }
+  }, { scope: ref });
 
   return (
-    <section ref={ref} className={`relative w-full ${L.gutter} py-24 sm:py-32`}>
+    <section ref={ref} className={`relative w-full ${L.gutter} py-14 sm:py-20`}>
       <div className={L.container}>
-        <div className="mb-14 flex flex-col justify-between gap-6 sm:mb-20 md:flex-row md:items-end">
-          <div className="max-w-2xl">
-            <p className={`mb-4 ${TYPE.label}`}>How it works</p>
-            <h2 className={`text-white ${TYPE.h2}`}>From first call to first campaign.</h2>
-          </div>
-          <p className={`max-w-[280px] text-white/60 md:text-right ${TYPE.small} sm:text-base`}>Step one is free and takes 20 minutes.</p>
+        <div className="mb-10 flex flex-col justify-between gap-6 sm:mb-12 md:flex-row md:items-end">
+          <div className="max-w-2xl"><p className={`mb-4 ${TYPE.label}`}>How it works</p><h2 className={`text-white ${TYPE.h2}`}>From first call to first campaign.</h2></div>
+          <p className={`max-w-[280px] text-white/60 md:text-right ${TYPE.small}`}>Step one is free and takes 20 minutes. <BookCallButton className="font-medium text-brand-green underline decoration-brand-green/40 underline-offset-4 hover:decoration-brand-green">Book it now</BookCallButton></p>
         </div>
 
         <ol className="hiw-track relative grid gap-10 pl-10 md:grid-cols-4 md:gap-6 md:pl-0 md:pt-14">
-          <span className="absolute left-0 right-0 top-[22px] hidden h-px bg-white/10 md:block">
-            <span className="hiw-fill block h-full origin-left bg-brand-green" />
-          </span>
-          <span className="absolute bottom-0 left-[15px] top-0 w-px bg-white/10 md:hidden">
-            <span className="hiw-fill-v block h-full w-full origin-top bg-brand-green" />
-          </span>
+          <span className="absolute left-0 right-0 top-[22px] hidden h-px bg-white/10 md:block"><span className="hiw-fill block h-full origin-left bg-brand-green" /></span>
+          <span className="absolute bottom-0 left-[15px] top-0 w-px bg-white/10 md:hidden"><span className="hiw-fill-v block h-full w-full origin-top bg-brand-green" /></span>
 
           {STEPS.map((s, i) => {
             const lit = reached > i;
             return (
               <li key={s.num} className="relative">
-                <span
-                  className={`absolute -left-10 top-0 grid h-8 w-8 place-items-center rounded-full border font-sans text-xs font-bold transition-colors duration-500 md:-top-14 md:left-0 md:h-11 md:w-11 ${
-                    lit ? "border-brand-green bg-brand-green text-black" : "border-white/15 bg-[#101216] text-white/50"
-                  }`}
-                >
-                  {s.num}
-                </span>
-                <h3 className={`font-sans text-xl font-bold tracking-[-0.02em] transition-colors duration-500 ${lit ? "text-white" : "text-white/45"}`}>{s.title}</h3>
-                <p className={`mt-2 max-w-xs font-sans text-sm leading-relaxed transition-colors duration-500 ${lit ? "text-white/65" : "text-white/35"}`}>{s.desc}</p>
+                <span className={`absolute -left-10 top-0 grid h-8 w-8 place-items-center rounded-full border font-sans text-xs font-bold transition-colors duration-500 md:-top-14 md:left-0 md:h-11 md:w-11 ${lit ? "border-brand-green bg-brand-green text-black" : "border-white/15 bg-[#101216] text-white/50"}`}>{s.num}</span>
+                <h3 className={`font-display text-xl font-semibold tracking-[-0.02em] transition-colors duration-500 ${lit ? "text-white" : "text-white/45"}`}>{s.title}</h3>
+                <p className={`mt-2 max-w-xs font-sans text-sm font-light leading-relaxed transition-colors duration-500 ${lit ? "text-white/65" : "text-white/35"}`}>{s.desc}</p>
               </li>
             );
           })}
@@ -1561,53 +1055,255 @@ function HowItWorks() {
   );
 }
 
-/* ---------- Final CTA ---------- */
-function FinalCta() {
+function WhoWeAre() {
   const ref = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(0);
+  const m = TEAM[active];
+  const first = m.name.split(" ")[0];
 
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      gsap.fromTo(
-        ".fc-word",
-        { opacity: 0.15 },
-        {
-          opacity: 1,
-          stagger: 0.05,
-          ease: "none",
-          scrollTrigger: { trigger: ref.current, start: "top 75%", end: "center center", scrub: true },
-        }
-      );
-    },
-    { scope: ref }
-  );
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.from(".wwa-head > *", { y: 28, autoAlpha: 0, stagger: 0.08, duration: 0.8, ease: "power3.out", scrollTrigger: { trigger: ref.current, start: "top 78%" } });
+    gsap.from(".wwa-portrait", { y: 40, autoAlpha: 0, scale: 0.96, stagger: 0.1, duration: 0.9, ease: "power3.out", scrollTrigger: { trigger: ".wwa-grid", start: "top 80%" } });
+  }, { scope: ref });
 
-  const line1 = "Don't just show up online.";
-  const line2 = "Give people a reason to remember you.";
+  const initials = (n: string) => n.split(" ").map((w) => w[0]).slice(0, 2).join("");
 
   return (
-    <section ref={ref} className={`flex flex-col items-center justify-center text-center ${L.gutter} py-28 sm:py-40`}>
-      <h2 className={`mx-auto max-w-5xl ${TYPE.statement}`}>
-        <span className="block text-white/40">
-          {line1.split(" ").map((w, i) => (
-            <span key={i} className="fc-word inline-block pr-[0.22em]">
-              {w}
-            </span>
+    <section ref={ref} className={`py-14 sm:py-20 ${L.gutter}`}>
+      <div className={L.container}>
+        <div className="wwa-head mb-10 grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
+          <div>
+            <p className={`mb-4 ${TYPE.label}`}>Who we are</p>
+            <h2 className={`text-white ${TYPE.h2}`}>The people behind your growth.</h2>
+          </div>
+          <p className={`max-w-lg text-white/60 lg:justify-self-end ${TYPE.body}`}>
+            A small team that handles ideas, video, ads, websites and automation. You talk to the people doing the work, not an account manager.
+          </p>
+        </div>
+
+        <div className="wwa-grid grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:gap-10">
+          {/* Portraits: black and white, the selected one comes to colour */}
+          <ul className="grid grid-cols-3 gap-3 sm:gap-4">
+            {TEAM.map((p, i) => {
+              const isActive = active === i;
+              return (
+                <li key={p.name} className="wwa-portrait">
+                  <button
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => setActive(i)}
+                    onMouseEnter={() => isFinePointer() && setActive(i)}
+                    className="group block w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green"
+                  >
+                    <span className={`relative block aspect-[3/4] overflow-hidden rounded-lg border transition-[border-color,filter] duration-500 ${isActive ? "border-brand-green/60 grayscale-0" : "border-white/[0.08] grayscale"}`}>
+                      {p.photo ? (
+                        <Image src={p.photo} alt={p.name} fill sizes="(max-width: 1024px) 33vw, 260px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                      ) : (
+                        <span className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-green/35 via-[#14301c] to-[#0c0d10] font-display text-[clamp(1.5rem,4vw,3rem)] font-semibold text-white/85">{initials(p.name)}</span>
+                      )}
+                      <span className={`absolute inset-x-0 bottom-0 h-1 origin-left bg-brand-green transition-transform duration-500 ${isActive ? "scale-x-100" : "scale-x-0"}`} />
+                    </span>
+                    <span className="mt-3 block truncate font-display text-sm font-semibold tracking-[-0.01em] text-white sm:text-base">{p.name}</span>
+                    <span className="block truncate text-xs text-white/50">{p.title}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Selected member: bio, focus and a direct CTA */}
+          <div className="flex flex-col rounded-xl border border-white/[0.08] bg-[#15171c] p-6 sm:p-8">
+            <AnimatePresence mode="wait">
+              <motion.div key={m.name} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.35, ease: EASE }}>
+                <p className="text-sm font-medium text-brand-green">{m.role}</p>
+                <h3 className="mt-1 font-display text-[clamp(1.6rem,2.6vw,2.25rem)] font-semibold leading-tight tracking-[-0.03em] text-white">{m.name}</h3>
+
+                <div className="mt-5 grid grid-cols-[1fr_auto] gap-px overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.08]">
+                  <div className="flex items-center gap-3 bg-[#15171c] px-4 py-3">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-brand-green" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c3 2 9 2 12 0v-5" /></svg>
+                    <span className="text-sm leading-snug text-white/80">{m.qualification}</span>
+                  </div>
+                  <div className="bg-[#15171c] px-4 py-3 text-right">
+                    <span className="block font-display text-lg font-semibold leading-none tracking-[-0.02em] text-white">{m.experience}</span>
+                    <span className="mt-1 block text-[11px] text-white/45">experience</span>
+                  </div>
+                </div>
+
+                <p className={`mt-5 text-white/70 ${TYPE.small} sm:text-[15px]`}>{m.bio}</p>
+                <p className="mt-5 text-xs text-white/45">Handles</p>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {m.focus.map((f) => (
+                    <li key={f} className="rounded-md border border-white/15 px-2.5 py-1 text-xs font-medium text-white/75">{f}</li>
+                  ))}
+                </ul>
+              </motion.div>
+            </AnimatePresence>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <BookCallButton className={`${BTN.base} ${BTN.green}`}>Book a call with {first} <ArrowRight size={16} /></BookCallButton>
+              <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className={`${BTN.base} ${BTN.dark}`}>Message on WhatsApp</a>
+            </div>
+
+            <ul className="mt-8 divide-y divide-white/[0.06] border-t border-white/[0.06]">
+              {TEAM.map((p, i) => (
+                <li key={p.name}>
+                  <button type="button" onClick={() => setActive(i)} className={`flex w-full items-center gap-3 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-green ${active === i ? "text-white" : "text-white/50 hover:text-white/80"}`}>
+                    <span className={`grid h-8 w-8 place-items-center rounded-full text-[11px] font-semibold ${active === i ? "bg-brand-green text-black" : "bg-white/[0.08]"}`}>{initials(p.name)}</span>
+                    <span className="text-sm font-medium">{p.name}</span>
+                    <span className="ml-auto truncate text-xs text-white/40">{p.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Stars() {
+  return (
+    <div className="flex gap-1" aria-label="5 out of 5 stars">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <svg key={i} viewBox="0 0 20 20" className="rev-star h-4 w-4 fill-brand-green"><path d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z" /></svg>
+      ))}
+    </div>
+  );
+}
+
+function Reviews() {
+  const ref = useRef<HTMLElement>(null);
+
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    const tl = gsap.timeline({ scrollTrigger: { trigger: ".rev-grid", start: "top 82%" } });
+    // Cards pop in from slightly tilted and scaled down, then settle
+    tl.fromTo(".rev-card",
+      { y: 40, scale: 0.9, rotate: (i: number) => [-2.5, 1.5, -1.5][i % 3], autoAlpha: 0 },
+      { y: 0, scale: 1, rotate: 0, autoAlpha: 1, duration: 0.9, stagger: 0.14, ease: "back.out(1.6)" })
+      .from(".rev-star", { scale: 0, autoAlpha: 0, duration: 0.35, stagger: 0.03, ease: "back.out(3)" }, "-=0.5");
+  }, { scope: ref });
+
+  return (
+    <section ref={ref} className={`py-14 sm:py-20 ${L.gutter}`}>
+      <div className={L.container}>
+        <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className={`mb-4 ${TYPE.label}`}>Reviews</p>
+            <h2 className={`text-white ${TYPE.h2}`}>What clients say.</h2>
+          </div>
+          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-white/60 underline decoration-white/20 underline-offset-4 transition hover:text-white">Ask us for a reference</a>
+        </div>
+        <div className="rev-grid grid gap-5 md:grid-cols-3">
+          {REVIEWS.map((r) => (
+            <figure key={r.author} className="rev-card flex flex-col justify-between rounded-xl border border-white/10 bg-white/[0.02] p-7 transition-[transform,border-color] duration-500 hover:-translate-y-1.5 hover:border-brand-green/30 sm:p-8">
+              <div>
+                <Stars />
+                <blockquote className="mt-5 font-display text-lg leading-snug tracking-[-0.015em] text-white/90">&ldquo;{r.text}&rdquo;</blockquote>
+              </div>
+              <figcaption className="mt-8 flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.08] font-display text-sm font-semibold text-white">{r.author.charAt(0)}</span>
+                <span>
+                  <span className="block text-sm font-semibold text-white">{r.author}</span>
+                  <span className="block text-xs text-white/50">{r.role}</span>
+                </span>
+              </figcaption>
+            </figure>
           ))}
-        </span>
-        <span className="mt-2 block text-white">
-          {line2.split(" ").map((w, i) => (
-            <span key={i} className="fc-word inline-block pr-[0.22em]">
-              {w}
-            </span>
-          ))}
-        </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FAQ() {
+  const ref = useRef<HTMLElement>(null);
+  const [open, setOpen] = useState<number | null>(0);
+
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.from(".faq-item", { y: 18, autoAlpha: 0, stagger: 0.05, duration: 0.6, ease: "power3.out", scrollTrigger: { trigger: ".faq-list", start: "top 85%" } });
+  }, { scope: ref });
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  };
+
+  return (
+    <section ref={ref} className={`py-14 sm:py-20 ${L.gutter}`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <div className={`${L.container} grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16`}>
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <p className={`mb-4 ${TYPE.label}`}>FAQ</p>
+          <h2 className={`text-white ${TYPE.h2}`}>Questions people ask before working with us.</h2>
+          <p className={`mt-5 max-w-sm text-white/60 ${TYPE.body}`}>Straight answers. If yours isn&apos;t here, just ask.</p>
+
+          <div className="mt-8 rounded-xl border border-white/[0.08] bg-[#15171c] p-6">
+            <p className="font-display text-lg font-medium tracking-[-0.02em] text-white">Still have a question?</p>
+            <p className={`mt-1 text-white/55 ${TYPE.small}`}>Book a free 20-minute call, or message the team on WhatsApp.</p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <BookCallButton className={`${BTN.base} ${BTN.green}`}>Book a 20-min call</BookCallButton>
+              <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className={`${BTN.base} ${BTN.whatsapp}`}>Chat on WhatsApp</a>
+            </div>
+          </div>
+        </div>
+
+        <ul className="faq-list space-y-3">
+          {FAQS.map((faq, i) => {
+            const isOpen = open === i;
+            return (
+              <li key={faq.q} className={`faq-item overflow-hidden rounded-xl border transition-colors duration-300 ${isOpen ? "border-brand-green/30 bg-brand-green/[0.04]" : "border-white/[0.08] bg-white/[0.02] hover:border-white/20"}`}>
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-${i}`}
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-green sm:px-6"
+                >
+                  <span className={`font-display text-[17px] font-medium tracking-[-0.015em] sm:text-lg ${isOpen ? "text-white" : "text-white/85"}`}>{faq.q}</span>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-all duration-300 ${isOpen ? "rotate-45 border-brand-green bg-brand-green text-black" : "border-white/20 text-white/70"}`}>
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14" /></svg>
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div id={`faq-${i}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease: EASE }} className="overflow-hidden">
+                      <p className={`px-5 pb-6 text-white/65 sm:px-6 ${TYPE.small} sm:text-[15px]`}>{faq.a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function FinalCta() {
+  const ref = useRef<HTMLElement>(null);
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.fromTo(".fc-word", { opacity: 0.15 }, { opacity: 1, stagger: 0.05, ease: "none", scrollTrigger: { trigger: ref.current, start: "top 75%", end: "center center", scrub: true } });
+  }, { scope: ref });
+
+  const line1 = "Ready to scale?";
+  const line2 = "Let's talk.";
+
+  return (
+    <section ref={ref} className={`flex flex-col items-center justify-center text-center ${L.gutter} py-20 sm:py-28`}>
+      <h2 className={`mx-auto max-w-4xl ${TYPE.statement}`}>
+        <span className="block text-white">{line1.split(" ").map((w, i) => <span key={i} className="fc-word inline-block pr-[0.22em]">{w}</span>)}</span>
+        <span className="mt-2 block text-white/40 font-light">{line2.split(" ").map((w, i) => <span key={i} className="fc-word inline-block pr-[0.22em]">{w}</span>)}</span>
       </h2>
-      <div className="mt-12 flex flex-col items-center gap-4 sm:mt-16">
-        <GlowButton href={AUDIT_HREF} className={`${L.button} ${T.button}`}>
-          Book a free audit <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-        </GlowButton>
-        <p className="font-sans text-sm text-white/50">Free, 20 minutes, on your page, ads and follow-ups.</p>
+      <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+        <BookCallButton className={`${BTN.base} ${BTN.green} w-full sm:w-auto`}>Book a 20-min call</BookCallButton>
+        <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer" className={`${BTN.base} ${BTN.whatsapp} w-full sm:w-auto`}>Chat on WhatsApp</a>
       </div>
     </section>
   );
