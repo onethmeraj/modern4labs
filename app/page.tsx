@@ -263,9 +263,21 @@ const TEAM: Member[] = [
 const TOOLS = ["Meta Ads", "Meta Pixel & CAPI", "Google Analytics 4", "GoHighLevel CRM", "WhatsApp Business", "Next.js", "Vercel", "AWS"];
 
 const REVIEWS = [
-  { text: "They completely transformed our lead generation pipeline. Highly recommended.", author: "Sarah J.", role: "CEO, TechFlow" },
-  { text: "Professional, fast, and the automation alone saved us 20 hours a week.", author: "Elena R.", role: "Ops Director" },
-  { text: "Our ad spend is finally generating real, measurable appointments.", author: "Mark T.", role: "Founder, Apex" },
+  {
+    text: "They handled our full social media video production and product shoots. Our products finally look the way they deserve to online.",
+    author: "Deeleka Sonal",
+    role: "Founder, Seafarer Store LK",
+  },
+  {
+    text: "So efficient that we had nothing to do from our side. A small team, but they managed everything better than I can put into words.",
+    author: "Chathuranga Buddhi",
+    role: "Founder, TIS Solutions",
+  },
+  {
+    text: "They helped with our platform and built the strategy behind my whole business plan. We went from 12 clients to 48 clients a month.",
+    author: "Thusitha Buddika",
+    role: "Founder, BookMyDriver",
+  },
 ];
 
 /* Review the answers so they match how you actually work before going live. */
