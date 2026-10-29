@@ -21,16 +21,36 @@ if (typeof window !== "undefined") {
 
 /* ---------- Tokens ---------- */
 
+/* Same type system as the homepage: Inter Tight headings, Inter body,
+   small green labels. The serif is reserved for the homepage hero. */
 export const T = {
-  display: "font-serif font-light leading-[0.95] tracking-[-0.02em] text-[clamp(2.75rem,8vw,6.5rem)]",
-  h1: "font-serif font-light leading-[0.98] tracking-[-0.02em] text-[clamp(2.5rem,6.5vw,5rem)]",
-  h2: "font-serif font-light leading-[1.05] tracking-[-0.015em] text-[clamp(2rem,4.5vw,3.75rem)]",
-  h3: "font-serif font-light leading-tight tracking-tight text-[clamp(1.375rem,2.2vw,2rem)]",
-  body: "font-sans font-light leading-relaxed text-[clamp(0.9375rem,1vw,1.0625rem)] text-white/65",
-  small: "font-sans font-light leading-relaxed text-[0.8125rem] sm:text-sm text-white/65",
-  label: "font-mono text-[10px] sm:text-[11px] tracking-[0.04em] text-white/45",
+  display: "font-display font-semibold leading-[1.02] tracking-[-0.045em] text-[clamp(2.5rem,6vw,5.25rem)]",
+  h1: "font-display font-semibold leading-[1.04] tracking-[-0.04em] text-[clamp(2.4rem,5.4vw,4.5rem)]",
+  h2: "font-display font-semibold leading-[1.06] tracking-[-0.035em] text-[clamp(1.85rem,3.4vw,3rem)]",
+  h3: "font-display font-semibold leading-snug tracking-[-0.025em] text-[clamp(1.2rem,1.9vw,1.6rem)]",
+  body: "font-sans text-base leading-relaxed sm:text-[17px] text-white/65",
+  small: "font-sans text-sm leading-relaxed text-white/60",
+  label: "font-sans text-[13px] font-medium tracking-[0.01em] text-brand-green",
+  meta: "font-sans text-xs text-white/45",
   button: "font-mono uppercase text-[10px] sm:text-[11px] tracking-[0.2em]",
 };
+
+/* Homepage button styles, shared so every page converts the same way. */
+export const BTN = {
+  base: "inline-flex items-center justify-center gap-2 rounded-md px-6 py-3.5 font-sans text-sm font-semibold transition-transform duration-300 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green",
+  green: "bg-brand-green text-black",
+  white: "bg-white text-black",
+  dark: "bg-[#0c0d10] border border-white/20 text-white hover:border-white/50",
+  whatsapp: "bg-[#25D366] text-black",
+};
+
+/* ---------- Contact points (one place to change them) ---------- */
+export const WHATSAPP_NUMBER = "94776822434"; // wa.me format: country code, no + or leading 0
+export const WHATSAPP_DISPLAY = "+94 77 682 2434";
+export const WHATSAPP_HREF = `https://wa.me/${WHATSAPP_NUMBER}`;
+export const whatsappLink = (text?: string) =>
+  text ? `${WHATSAPP_HREF}?text=${encodeURIComponent(text)}` : WHATSAPP_HREF;
+export const CALENDLY_URL = "https://calendly.com/emadushka801/modern4labs";
 
 /* Lifted, slightly warm neutrals. Pure #000 reads as a void. */
 export const S = {
@@ -45,7 +65,7 @@ export const L = {
   gutter: "px-5 sm:px-8 lg:px-12",
   container: "mx-auto w-full max-w-7xl",
   narrow: "mx-auto w-full max-w-4xl",
-  block: "py-24 sm:py-32 lg:py-40",
+  block: "py-14 sm:py-20",
   screen: "h-[100svh] min-h-[560px]",
   button: "px-6 py-3 sm:px-8 sm:py-4",
 };
@@ -148,18 +168,19 @@ export function SiteNav() {
         >
           <Link
             href="/"
-            aria-label="modern4labs.io home"
+            aria-label="modern4labs home"
             className="flex shrink-0 items-center rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-green"
           >
-            {/* Wordmark is 1377×201 (≈6.85:1). Height drives size, width follows. */}
+            {/* modern4labs wordmark, 2068×376 (≈5.5:1). Height drives size, width follows.
+                New filename on purpose, so browsers and the Next image cache can't serve the old .io logo. */}
             <Image
-              src="/logo-wordmark.png"
-              alt="modern4labs.io"
-              width={1377}
-              height={201}
+              src="/modern4labs-logo.png"
+              alt="modern4labs"
+              width={2068}
+              height={376}
               priority
-              sizes="(max-width: 640px) 150px, 190px"
-              className={`w-auto transition-[height] duration-500 ${solid ? "h-[20px] sm:h-[23px]" : "h-[22px] sm:h-[27px]"}`}
+              sizes="(max-width: 640px) 140px, 180px"
+              className={`w-auto transition-[height] duration-500 ${solid ? "h-[22px] sm:h-[26px]" : "h-[25px] sm:h-[31px]"}`}
             />
           </Link>
 
@@ -247,7 +268,7 @@ export function SiteNav() {
 
 export function SiteFooter() {
   return (
-    <footer className={`border-t border-white/[0.08] ${L.gutter} py-14 sm:py-16`}>
+    <footer className={`border-t border-white/[0.08] ${L.gutter} py-12 sm:py-14`}>
       <div className={`${L.container} flex flex-col gap-10 sm:gap-12`}>
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <h2 className={`max-w-xl text-white ${T.h3}`}>
@@ -258,7 +279,7 @@ export function SiteFooter() {
           </GlowButton>
         </div>
 
-        <div className={`flex flex-col justify-between gap-4 border-t border-white/[0.08] pt-8 sm:flex-row ${T.label}`}>
+        <div className={`flex flex-col justify-between gap-4 border-t border-white/[0.08] pt-8 sm:flex-row ${T.meta}`}>
           <span>© 2026 Modern4labs.io</span>
           <div className="flex gap-6">
             {NAV_LINKS.map((link) => (
@@ -475,7 +496,7 @@ export function ScrollGlowStatement({
 
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <p className={`font-mono text-[11px] tracking-[0.04em] text-white/45 ${className}`}>
+    <p className={`${T.label} ${className}`}>
       {children}
     </p>
   );
@@ -493,7 +514,7 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className={`relative overflow-hidden ${L.gutter} pb-16 pt-36 sm:pb-24 sm:pt-44`}>
+    <header className={`relative overflow-hidden ${L.gutter} pb-12 pt-32 sm:pb-16 sm:pt-40`}>
       {/* Page-level glow: same colour, same falloff, every route. */}
       <div
         aria-hidden
@@ -505,23 +526,166 @@ export function PageHeader({
         <motion.div variants={fadeUp}>
           <Eyebrow>{eyebrow}</Eyebrow>
         </motion.div>
-        <motion.h1 variants={fadeUp} className={`mt-6 max-w-4xl text-white ${T.h1}`}>
+        <motion.h1 variants={fadeUp} className={`mt-4 max-w-4xl text-white ${T.h1}`}>
           {title}
         </motion.h1>
         {lead && (
-          <motion.p variants={fadeUp} className={`mt-8 max-w-xl ${T.body}`}>
+          <motion.p variants={fadeUp} className={`mt-6 max-w-2xl ${T.body}`}>
             {lead}
           </motion.p>
         )}
-        {children && <motion.div variants={fadeUp} className="mt-10">{children}</motion.div>}
+        {children && <motion.div variants={fadeUp} className="mt-8">{children}</motion.div>}
       </motion.div>
     </header>
   );
 }
 
+/* ---------- Calendly ----------
+   The popup script loads on first hover/focus so it never slows the page.
+   If it fails, the link opens Calendly in a new tab. */
+declare global {
+  interface Window {
+    Calendly?: { initPopupWidget: (o: { url: string }) => void };
+  }
+}
+
+let calendlyLoading: Promise<void> | null = null;
+function loadCalendly() {
+  if (typeof window === "undefined" || window.Calendly) return Promise.resolve();
+  if (calendlyLoading) return calendlyLoading;
+  calendlyLoading = new Promise<void>((resolve, reject) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://assets.calendly.com/assets/external/widget.css";
+    document.head.appendChild(css);
+    const js = document.createElement("script");
+    js.src = "https://assets.calendly.com/assets/external/widget.js";
+    js.async = true;
+    js.onload = () => resolve();
+    js.onerror = () => {
+      calendlyLoading = null;
+      reject();
+    };
+    document.body.appendChild(js);
+  });
+  return calendlyLoading;
+}
+
+export function BookCallButton({ className, children }: { className: string; children: ReactNode }) {
+  const open = async (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try {
+      await loadCalendly();
+      window.Calendly?.initPopupWidget({ url: `${CALENDLY_URL}?hide_gdpr_banner=1` });
+    } catch {
+      window.open(CALENDLY_URL, "_blank", "noopener,noreferrer");
+    }
+  };
+  const warm = () => {
+    void loadCalendly().catch(() => {});
+  };
+  return (
+    <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" onClick={open} onMouseEnter={warm} onFocus={warm} className={className}>
+      {children}
+    </a>
+  );
+}
+
+/* ---------- Roll-up number ("+45%", "3.2x", "975K+") ---------- */
+export function CountUp({ value, className = "" }: { value: string; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useGSAP(
+    () => {
+      const el = ref.current;
+      if (!el || prefersReducedMotion()) return;
+      const m = value.match(/^([^0-9]*)([0-9.]+)(.*)$/);
+      if (!m) return;
+      const [, pre, num, suf] = m;
+      const end = parseFloat(num);
+      const decimals = num.includes(".") ? num.split(".")[1].length : 0;
+      const obj = { v: 0 };
+      el.textContent = `${pre}${(0).toFixed(decimals)}${suf}`;
+      gsap.to(obj, {
+        v: end,
+        duration: 2,
+        ease: "power3.out",
+        scrollTrigger: { trigger: el, start: "top 90%" },
+        onUpdate: () => {
+          el.textContent = `${pre}${obj.v.toFixed(decimals)}${suf}`;
+        },
+      });
+    },
+    { scope: ref }
+  );
+
+  return (
+    <span ref={ref} aria-label={value} className={`tabular-nums ${className}`}>
+      {value}
+    </span>
+  );
+}
+
+/* ---------- Section header: green label + heading, optional note on the right ---------- */
+export function SectionHead({ label, title, note, className = "" }: { label: string; title: ReactNode; note?: ReactNode; className?: string }) {
+  return (
+    <div className={`mb-10 flex flex-col justify-between gap-5 sm:mb-12 md:flex-row md:items-end ${className}`}>
+      <div className="max-w-2xl">
+        <p className={`mb-4 ${T.label}`}>{label}</p>
+        <h2 className={`text-white ${T.h2}`}>{title}</h2>
+      </div>
+      {note && <p className={`max-w-xs md:text-right ${T.small}`}>{note}</p>}
+    </div>
+  );
+}
+
+/* ---------- Closing call to action, identical on every page ---------- */
+export function CtaBand({
+  title = "Let’s find where your leads are slipping away.",
+  lead = "Book a free 20-minute call. We’ll look at your page, your ads and your follow-up, then tell you what we’d fix first.",
+  whatsappText = "Hi Modern4labs, I'd like to talk about a project.",
+}: {
+  title?: ReactNode;
+  lead?: string;
+  whatsappText?: string;
+}) {
+  return (
+    <section className={`${L.gutter} py-14 sm:py-20`}>
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.8, ease: EASE }}
+        className={`${L.container} relative overflow-hidden rounded-2xl border border-brand-green/20 bg-brand-green/[0.04] p-8 sm:p-12`}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-60 blur-[90px]"
+          style={{ background: `radial-gradient(circle, rgba(${GLOW.rgb},0.35) 0%, transparent 70%)` }}
+        />
+        <div className="relative grid gap-8 lg:grid-cols-[1.3fr_auto] lg:items-end lg:gap-16">
+          <div>
+            <p className={T.label}>Next step</p>
+            <h2 className={`mt-3 max-w-2xl text-white ${T.h2}`}>{title}</h2>
+            <p className={`mt-4 max-w-xl ${T.body}`}>{lead}</p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+            <BookCallButton className={`${BTN.base} ${BTN.green}`}>
+              Book a 20-min call <ArrowRight />
+            </BookCallButton>
+            <a href={whatsappLink(whatsappText)} target="_blank" rel="noopener noreferrer" className={`${BTN.base} ${BTN.whatsapp}`}>
+              Chat on WhatsApp
+            </a>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
 export function ArrowRight({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg    
+    <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"

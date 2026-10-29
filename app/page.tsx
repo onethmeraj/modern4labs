@@ -50,7 +50,7 @@ const BTN = {
 
 const AUDIT_HREF = "/contact?service=audit";
 const CALENDLY_URL = "https://calendly.com/emadushka801/modern4labs";
-const WHATSAPP_HREF = "https://wa.me/YOUR_NUMBER_HERE";
+const WHATSAPP_HREF = "https://wa.me/94776822434";
 
 const HERO_KICKER = "Modern4Labs — Digital Studio";
 const ROTATING_WORDS = ["Leads.", "Growth.", "Vision.", "Scale."] as const;
@@ -124,7 +124,7 @@ const SERVICES: {
 ];
 
 /* --------------------------------------------------------------------------
-   PROJECTS — one entry per file in /public/works (there is no project-4).
+   PROJECTS — one entry per file in /public/works (project-0 to project-8, no project-4).
    -------------------------------------------------------------------------- */
 type Project = {
   id: string;
@@ -184,6 +184,22 @@ const PROJECTS: Project[] = [
     summary: "Studio builds with lighting, framing and backdrops planned for video, plus videography that focuses on the details: textures, close-ups and clean movement that make footage look high-end.",
     services: ["Studio design", "Lighting", "Videography", "Colour"],
   },
+  {
+    id: "system-architecture",
+    image: "/works/project-7.png",
+    category: "Web systems",
+    title: "System architecture and planning",
+    summary: "Before any code is written, we map how the whole system fits together: user data, API endpoints, profiles and the logic that connects them. Planning it out first means fewer surprises mid-build, faster delivery and a system that can grow with the business.",
+    services: ["System design", "API planning", "Database structure", "Scalability"],
+  },
+  {
+    id: "web-development",
+    image: "/works/project-8.png",
+    category: "Web development",
+    title: "Custom websites and web apps",
+    summary: "Full-stack builds from front end to back end: fast websites, e-commerce stores and custom web apps. Meta Pixel, analytics and CRM connections are wired in from day one, so every visitor and lead is tracked from launch.",
+    services: ["Next.js", "Backend & APIs", "E-commerce", "Tracking & CRM"],
+  },
 ];
 
 const RESULTS = [
@@ -215,6 +231,7 @@ type Member = {
 const TEAM: Member[] = [
   {
     name: "Eshan Madushanka",
+    photo: "/team/profileeshan.jpg",
     title: "Creative Director",
     role: "Co-Founder, Creative Director & Content Strategist",
     qualification: "BBA (Hons) in Marketing Management",
@@ -224,6 +241,7 @@ const TEAM: Member[] = [
   },
   {
     name: "Oneth Meraj",
+    photo: "/team/profileoneth.jpg",
     title: "Technology & Growth",
     role: "Co-Founder, Technology & Growth Strategist",
     qualification: "BSc (Hons) in Software Engineering",
@@ -642,7 +660,7 @@ function WorkAndResults() {
     if (prefersReducedMotion()) return;
     // One long track, all projects once, cloned only to make the loop seamless.
     // The track is wider than any screen, so the same image is never visible twice.
-    tween.current = gsap.to(".work-track", { xPercent: -50, duration: 80, ease: "none", repeat: -1 });
+    tween.current = gsap.to(".work-track", { xPercent: -50, duration: 60, ease: "none", repeat: -1 });
     gsap.from(".result-card", { y: 30, autoAlpha: 0, stagger: 0.1, duration: 0.8, ease: "power3.out", scrollTrigger: { trigger: ".result-grid", start: "top 85%" } });
     // Roll-up counters: "+45%", "3.2x", "975K+" count up from zero, keeping prefix/suffix
     gsap.utils.toArray<HTMLElement>(".result-num").forEach((el, i) => {
@@ -1098,7 +1116,7 @@ function WhoWeAre() {
                   >
                     <span className={`relative block aspect-[3/4] overflow-hidden rounded-lg border transition-[border-color,filter] duration-500 ${isActive ? "border-brand-green/60 grayscale-0" : "border-white/[0.08] grayscale"}`}>
                       {p.photo ? (
-                        <Image src={p.photo} alt={p.name} fill sizes="(max-width: 1024px) 33vw, 260px" className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                        <Image src={p.photo} alt={p.name} fill sizes="(max-width: 1024px) 33vw, 260px" className="object-cover object-[50%_20%] transition-transform duration-700 ease-out group-hover:scale-105" />
                       ) : (
                         <span className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-green/35 via-[#14301c] to-[#0c0d10] font-display text-[clamp(1.5rem,4vw,3rem)] font-semibold text-white/85">{initials(p.name)}</span>
                       )}
