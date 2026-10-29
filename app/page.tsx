@@ -81,10 +81,10 @@ const SERVICES: {
   {
     id: "short-form-video",
     num: "001",
-    title: "Short-form video",
-    promise: "Reels and ads that stop the scroll and say something.",
-    tags: ["Content ideas", "Scriptwriting", "Editing", "Hooks"],
-    monthly: "A planned calendar of scripted, edited reels, ready to post.",
+    title: "Social media videography & filming",
+    promise: "On-location and studio shoots that give your brand content worth stopping for.",
+    tags: ["Short-form content", "Reels & ads", "Product shoots", "Personal branding shoots", "Podcast filming", "Event coverage", "Scriptwriting", "Editing"],
+    monthly: "We plan, script and film everything, from product and personal branding shoots to podcasts and events, then edit it into scroll-stopping short-form content, ready to post.",
     proof: "Seafarer Store",
   },
   {
@@ -251,6 +251,7 @@ const TEAM: Member[] = [
   },
   {
     name: "Riftha",
+    photo: "/team/profileriftha.jpg",
     title: "Head of Operations",
     role: "Head of Operations",
     qualification: "BBA (Hons) in Marketing Management",
