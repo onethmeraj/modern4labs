@@ -83,8 +83,8 @@ const SERVICES: {
     num: "001",
     title: "Social media management (organic growth)",
     promise: "We manage your social media to grow your audience organically.",
-    tags: ["Scripting", "Editing", "Filming (based on requirements)"],
-    monthly: "Scripts written for your brand, content edited and posted, and filming arranged when the plan needs it.",
+    tags: ["Ideation", "Scripting", "Editing", "Filming (based on requirements)"],
+    monthly: "Content ideas planned for your brand, scripts written, content edited and posted, and filming arranged when the plan needs it.",
   },
   {
     id: "paid-ads",
@@ -247,7 +247,7 @@ const TEAM: Member[] = [
     focus: ["Full-stack development", "Backend systems", "AI solutions", "Growth strategy", "Client management"],
   },
   {
-    name: "Riftha Fawaz",
+    name: "Riftha Fawas",
     photo: "/team/profileriftha.jpg",
     title: "Head of Operations",
     role: "Head of Operations",
@@ -1009,7 +1009,7 @@ function Services() {
             {[
               { k: "Click", v: "Meta Pixel & Conversions API" },
               { k: "Visit", v: "Google Analytics 4" },
-              { k: "Lead", v: "Any CRM you use" },
+              { k: "Lead", v: "Any CRM" },
               { k: "Follow-up", v: "WhatsApp & email" },
             ].map((x) => (
               <li key={x.k} className="bg-[#101216] p-4">
