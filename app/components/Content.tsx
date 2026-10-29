@@ -24,7 +24,7 @@ export type Member = {
 
 export const TEAM: Member[] = [
   {
-    name: "Eshan Madushanka",
+    name: "Eshan Madushka",
     photo: "/team/profileeshan.jpg",
     title: "Creative Director",
     role: "Co-Founder, Creative Director & Content Strategist",
@@ -45,6 +45,7 @@ export const TEAM: Member[] = [
   },
   {
     name: "Riftha",
+    photo: "/team/profileriftha.jpg",
     title: "Head of Operations",
     role: "Head of Operations",
     qualification: "BBA (Hons) in Marketing Management",

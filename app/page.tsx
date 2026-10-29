@@ -81,11 +81,10 @@ const SERVICES: {
   {
     id: "short-form-video",
     num: "001",
-    title: "Social media videography & filming",
-    promise: "On-location and studio shoots that give your brand content worth stopping for.",
-    tags: ["Short-form content", "Reels & ads", "Product shoots", "Personal branding shoots", "Podcast filming", "Event coverage", "Scriptwriting", "Editing"],
-    monthly: "We plan, script and film everything, from product and personal branding shoots to podcasts and events, then edit it into scroll-stopping short-form content, ready to post.",
-    proof: "Seafarer Store",
+    title: "Social media management (organic growth)",
+    promise: "We manage your social media to grow your audience organically.",
+    tags: ["Scripting", "Editing", "Filming (based on requirements)"],
+    monthly: "Scripts written for your brand, content edited and posted, and filming arranged when the plan needs it.",
   },
   {
     id: "paid-ads",
@@ -94,7 +93,6 @@ const SERVICES: {
     promise: "Meta campaigns set up, tested and managed for ROI.",
     tags: ["Campaign setup", "Creative testing", "Retargeting"],
     monthly: "Campaigns checked and adjusted every week, with a clear monthly report.",
-    proof: "Sunblock Property",
   },
   {
     id: "websites-tracking",
@@ -103,7 +101,6 @@ const SERVICES: {
     promise: "Websites, e-commerce stores and landing pages built to turn clicks into bookings and sales.",
     tags: ["Websites", "E-commerce", "Landing pages", "Meta Pixel & Conversions API", "Google Analytics 4", "Lead forms"],
     monthly: "Every site we build is wired for tracking from day one. You see who visited, what they clicked and which ad or post brought them in, so you stop guessing and spend on what works.",
-    proof: "The Search Bar",
   },
   {
     id: "automation-crm",
@@ -141,7 +138,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-0.png",
     category: "Video production",
     title: "The Search Bar production",
-    summary: "End-to-end video production for The Search Bar, a learning platform for teachers. We planned the shoots, filmed on set and handled the edit, so the brand had a steady flow of ready-to-post content.",
+    summary: "We produced video content for The Search Bar. On set, we reviewed footage on a laptop editing station between takes, then edited the sessions into ready-to-post videos for their social channels.",
     services: ["Pre-production", "Filming", "Editing", "Social cut-downs"],
   },
   {
@@ -149,7 +146,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-1.jpeg",
     category: "Branding",
     title: "Branding for the automotive industry",
-    summary: "On-location shoots at showrooms and launch events, capturing vehicles, people and the atmosphere of the day. Built into brand content and short-form videos that make the dealership feel premium and busy.",
+    summary: "We covered a vehicle showroom launch on a gimbal, capturing the cars, the crowd and the atmosphere, then cut the footage into short brand videos for social media.",
     services: ["Event coverage", "Gimbal filming", "Brand content", "Reels"],
   },
   {
@@ -157,7 +154,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-2.png",
     category: "Product & personal brand",
     title: "Product and personal branding shoots",
-    summary: "Shoots that put the product and the founder side by side, so customers see both what they are buying and who stands behind it. Lit, framed and scripted for social first.",
+    summary: "We ran a studio shoot with softbox lighting, capturing product shots and portraits of the founder for social posts and personal branding content.",
     services: ["Shoot planning", "Product filming", "Talking-head video", "Editing"],
   },
   {
@@ -165,7 +162,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-3.jpeg",
     category: "Podcast",
     title: "Single-guest social media podcasts",
-    summary: "One-on-one podcast sessions recorded for social media. One sitting is cut into many short clips with strong hooks, so a single shoot feeds weeks of posts.",
+    summary: "We set up a single-guest podcast in the studio with a backdrop and lighting, recorded the session, then cut it into short clips for social media.",
     services: ["Multi-camera setup", "Audio", "Clip editing", "Captions"],
   },
   {
@@ -173,7 +170,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-5.png",
     category: "Personal brand",
     title: "Personal branding for tutors and niche experts",
-    summary: "Personal brands for tutors and niche specialists. We find the angle that makes them the obvious choice, write the scripts and film content that builds trust with students and parents.",
+    summary: "We filmed talking-head content for a tutor at a desk set, running a camera and a phone rig together so one session produced videos for every platform.",
     services: ["Positioning", "Scripting", "Filming", "Editing"],
   },
   {
@@ -181,7 +178,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-6.jpeg",
     category: "Studio & videography",
     title: "Studio setup and detail-focused videography",
-    summary: "Studio builds with lighting, framing and backdrops planned for video, plus videography that focuses on the details: textures, close-ups and clean movement that make footage look high-end.",
+    summary: "We set up a studio space with lighting, plants and a screen backdrop, then filmed detail-focused footage of the set: close-ups, textures and clean camera movement.",
     services: ["Studio design", "Lighting", "Videography", "Colour"],
   },
   {
@@ -189,7 +186,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-7.png",
     category: "Web systems",
     title: "System architecture and planning",
-    summary: "Before any code is written, we map how the whole system fits together: user data, API endpoints, profiles and the logic that connects them. Planning it out first means fewer surprises mid-build, faster delivery and a system that can grow with the business.",
+    summary: "We mapped out a web system on the whiteboard before writing any code: user data, API endpoints, recognition logic, the database schema, and where caching was needed to scale.",
     services: ["System design", "API planning", "Database structure", "Scalability"],
   },
   {
@@ -197,7 +194,7 @@ const PROJECTS: Project[] = [
     image: "/works/project-8.png",
     category: "Web development",
     title: "Custom websites and web apps",
-    summary: "Full-stack builds from front end to back end: fast websites, e-commerce stores and custom web apps. Meta Pixel, analytics and CRM connections are wired in from day one, so every visitor and lead is tracked from launch.",
+    summary: "We wrote and debugged the code for a custom web app, from front end to back end, and connected tracking and the CRM before launch.",
     services: ["Next.js", "Backend & APIs", "E-commerce", "Tracking & CRM"],
   },
 ];
@@ -230,7 +227,7 @@ type Member = {
 
 const TEAM: Member[] = [
   {
-    name: "Eshan Madushanka",
+    name: "Eshan Madushka",
     photo: "/team/profileeshan.jpg",
     title: "Creative Director",
     role: "Co-Founder, Creative Director & Content Strategist",
@@ -250,7 +247,7 @@ const TEAM: Member[] = [
     focus: ["Full-stack development", "Backend systems", "AI solutions", "Growth strategy", "Client management"],
   },
   {
-    name: "Riftha",
+    name: "Riftha Fawaz",
     photo: "/team/profileriftha.jpg",
     title: "Head of Operations",
     role: "Head of Operations",
@@ -261,7 +258,7 @@ const TEAM: Member[] = [
   },
 ];
 
-const TOOLS = ["Meta Ads", "Meta Pixel & CAPI", "Google Analytics 4", "GoHighLevel CRM", "WhatsApp Business", "Next.js", "Vercel", "AWS"];
+const TOOLS = ["Meta Ads", "Meta Pixel & CAPI", "Google Analytics 4", "CRM integration", "WhatsApp Business", "Next.js", "Vercel", "AWS"];
 
 const REVIEWS = [
   {
@@ -1012,8 +1009,8 @@ function Services() {
             {[
               { k: "Click", v: "Meta Pixel & Conversions API" },
               { k: "Visit", v: "Google Analytics 4" },
-              { k: "Lead", v: "GoHighLevel CRM" },
-              { k: "Follow-up", v: "WhatsApp, email & SMS" },
+              { k: "Lead", v: "Any CRM you use" },
+              { k: "Follow-up", v: "WhatsApp & email" },
             ].map((x) => (
               <li key={x.k} className="bg-[#101216] p-4">
                 <p className="text-xs font-medium text-brand-green">{x.k}</p>
