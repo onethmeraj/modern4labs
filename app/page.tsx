@@ -301,7 +301,14 @@ const isFinePointer = () => typeof window !== "undefined" && window.matchMedia("
 /* Calendly popup. The script loads on first hover/focus, so it never slows the page.
    If it fails to load, the link simply opens Calendly in a new tab. */
 declare global {
-  interface Window { Calendly?: { initPopupWidget: (o: { url: string }) => void } }
+  interface Window {
+    Calendly?: {
+      initPopupWidget: (o: {
+        url: string;
+        prefill?: { name?: string; email?: string };
+      }) => void;
+    };
+  }
 }
 
 let calendlyLoading: Promise<void> | null = null;
