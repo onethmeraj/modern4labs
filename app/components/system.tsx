@@ -119,6 +119,11 @@ export function SiteNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const lenis = useLenis();
 
+  // Every page has the nav, so this catches Calendly bookings site-wide
+  useEffect(() => {
+    listenForBookings();
+  }, []);
+
   useEffect(() => {
     let last = window.scrollY;
     const onScroll = () => {
@@ -151,12 +156,12 @@ export function SiteNav() {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-[60] border-b transition-[transform,background-color,border-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`fixed inset-x-0 top-0 z-[60] transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           hidden && !menuOpen ? "-translate-y-full" : "translate-y-0"
         } ${
           solid
-            ? "border-white/[0.08] bg-[#0c0d10]/80 backdrop-blur-xl backdrop-saturate-150"
-            : "border-transparent bg-gradient-to-b from-black/80 via-black/40 to-transparent"
+            ? "bg-[#0c0d10]/80 backdrop-blur-xl backdrop-saturate-150"
+            : "bg-gradient-to-b from-black/80 via-black/40 to-transparent"
         }`}
       >
         {/* Inner row uses the same container as the page sections,
@@ -280,7 +285,7 @@ export function SiteFooter() {
         </div>
 
         <div className={`flex flex-col justify-between gap-4 border-t border-white/[0.08] pt-8 sm:flex-row ${T.meta}`}>
-          <span>© 2026 Modern4labs.io</span>
+          <span>© 2026 modern4labs.com</span>
           <div className="flex gap-6">
             {NAV_LINKS.map((link) => (
               <Link key={link.href} href={link.href} className="transition-colors hover:text-white">
@@ -545,13 +550,53 @@ export function PageHeader({
    If it fails, the link opens Calendly in a new tab. */
 declare global {
   interface Window {
-    Calendly?: { initPopupWidget: (o: { url: string }) => void };
+    Calendly?: { initPopupWidget: (o: { url: string; prefill?: { name?: string; email?: string } }) => void };
   }
+}
+
+/* The contact form saves the visitor here, so every "Book a call" button
+   pre-fills Calendly and the booking can be matched to their CRM contact. */
+export const LEAD_KEY = "m4l_lead";
+type StoredLead = { name?: string; email?: string };
+export function readLead(): StoredLead {
+  try {
+    return JSON.parse(sessionStorage.getItem(LEAD_KEY) || "{}") as StoredLead;
+  } catch {
+    return {};
+  }
+}
+export function saveLead(lead: StoredLead) {
+  try {
+    sessionStorage.setItem(LEAD_KEY, JSON.stringify(lead));
+  } catch {
+    /* storage unavailable: booking still works, just without the match */
+  }
+}
+
+/* When a booking completes inside the popup, tell our server so the
+   contact gets tagged "call-booked" in GHL. Attached once. */
+let bookingListener = false;
+function listenForBookings() {
+  if (bookingListener || typeof window === "undefined") return;
+  bookingListener = true;
+  window.addEventListener("message", (e: MessageEvent) => {
+    if (e.origin !== "https://calendly.com") return;
+    const data = e.data as { event?: string; payload?: { invitee?: { uri?: string }; event?: { uri?: string } } };
+    if (data?.event !== "calendly.event_scheduled") return;
+    void fetch("/api/booked", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inviteeUri: data.payload?.invitee?.uri, eventUri: data.payload?.event?.uri, lead: readLead() }),
+      keepalive: true,
+    }).catch(() => {});
+  });
 }
 
 let calendlyLoading: Promise<void> | null = null;
 function loadCalendly() {
-  if (typeof window === "undefined" || window.Calendly) return Promise.resolve();
+  if (typeof window === "undefined") return Promise.resolve();
+  listenForBookings();
+  if (window.Calendly) return Promise.resolve();
   if (calendlyLoading) return calendlyLoading;
   calendlyLoading = new Promise<void>((resolve, reject) => {
     const css = document.createElement("link");
@@ -571,12 +616,24 @@ function loadCalendly() {
   return calendlyLoading;
 }
 
-export function BookCallButton({ className, children }: { className: string; children: ReactNode }) {
+export function BookCallButton({
+  className,
+  children,
+  prefill,
+}: {
+  className: string;
+  children: ReactNode;
+  prefill?: { name?: string; email?: string };
+}) {
   const open = async (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     try {
       await loadCalendly();
-      window.Calendly?.initPopupWidget({ url: `${CALENDLY_URL}?hide_gdpr_banner=1` });
+      const lead = prefill ?? readLead();
+      window.Calendly?.initPopupWidget({
+        url: `${CALENDLY_URL}?hide_gdpr_banner=1`,
+        prefill: lead.email ? { name: lead.name, email: lead.email } : undefined,
+      });
     } catch {
       window.open(CALENDLY_URL, "_blank", "noopener,noreferrer");
     }

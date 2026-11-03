@@ -573,6 +573,49 @@ function Hero({ start }: { start: boolean }) {
       .fromTo(".fg-content", { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -40, duration: 0.8, ease: "power2.in" }, 0);
   }, { scope: containerRef, dependencies: [start] });
 
+  /* Hero sound only belongs to the hero. As the video fades out on scroll,
+     the volume fades with it and the sound toggle hides; scrolling back up
+     brings both back at the level the visitor chose. */
+  useGSAP(() => {
+    const video = videoRef.current;
+    if (!start || !video) return;
+
+    // iOS ignores video.volume, so there we mute instead once the video is gone
+    const probe = document.createElement("audio");
+    probe.volume = 0.5;
+    const canSetVolume = probe.volume === 0.5;
+
+    let toggleVisible = true;
+    let forcedMute = false;
+
+    const st = ScrollTrigger.create({
+      trigger: containerRef.current,
+      start: "top top",
+      end: () => `+=${window.innerHeight * 0.55}`,
+      onUpdate: (self) => {
+        const p = self.progress;
+
+        if (canSetVolume) {
+          video.volume = Math.max(0, 1 - p * 1.25);
+        } else if (p > 0.6 && !video.muted) {
+          video.muted = true;
+          forcedMute = true;
+        } else if (p <= 0.6 && forcedMute) {
+          video.muted = false;
+          forcedMute = false;
+        }
+
+        const show = p < 0.7;
+        if (show !== toggleVisible) {
+          toggleVisible = show;
+          gsap.to(".sound-toggle-wrap", { autoAlpha: show ? 1 : 0, duration: 0.3, overwrite: true });
+        }
+      },
+    });
+
+    return () => st.kill();
+  }, { scope: containerRef, dependencies: [start] });
+
   return (
     <section ref={containerRef} onMouseMove={handleMouseMove} className={`relative flex w-full items-center justify-center overflow-hidden bg-transparent ${L.screen}`}>
       <div className="hero-video-wrapper pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -613,7 +656,7 @@ function Hero({ start }: { start: boolean }) {
             </div>
           </div>
         </motion.div>
-        <div className="absolute bottom-8 right-5 z-30 sm:bottom-10 sm:right-8">
+        <div className="sound-toggle-wrap absolute bottom-8 right-5 z-30 sm:bottom-10 sm:right-8">
           <SoundToggle videoRef={videoRef} />
         </div>
       </div>
